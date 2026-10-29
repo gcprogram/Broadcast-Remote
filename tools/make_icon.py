@@ -125,6 +125,10 @@ def main():
     with open(os.path.join(res, "values", "ic_launcher_background.xml"), "w", encoding="utf-8", newline="\n") as f:
         f.write('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n'
                 '    <color name="ic_launcher_background">%s</color>\n</resources>\n' % BG_FLAT)
+    os.makedirs(os.path.join(res, "drawable-nodpi"), exist_ok=True)
+    tile = Image.new("RGBA", (192, 192), (0, 0, 0, 0))                                      # icon in the title bar,
+    tile.alpha_composite(preview(136), (28, 28))                                            # with a transparent margin
+    tile.save(os.path.join(res, "drawable-nodpi", "ic_title.png"), optimize=True)
     preview().save(os.path.join(ROOT, "docs", "img", "icon.png"), optimize=True)
     social_preview().save(os.path.join(ROOT, "docs", "img", "social-preview.png"), optimize=True)
     print("icon written")
