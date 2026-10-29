@@ -80,10 +80,10 @@ public class ProfileEditorActivity extends Activity {
         if (p == null) return;
         result.setTextColor(0xFF2E7D32);
         StringBuilder s = new StringBuilder("OK, Profil \"" + p.name + "\", " + p.buttons.size() + " Knöpfe.\n\nPakete:\n");
-        s.append(preview(p, p.offCode, "Aus"));
+        s.append(p.offSilent ? "  Aus   (kein Paket, Senden wird gestoppt)\n" : preview(p, p.offCode, "Aus"));
         int shown = 0;
         for (Profile.Btn b : p.buttons) {
-            if (b.code == p.offCode) continue;
+            if (!p.offSilent && b.code == p.offCode) continue;
             if (shown++ >= 4) break;
             s.append(preview(p, b.code, "Knopf"));
         }

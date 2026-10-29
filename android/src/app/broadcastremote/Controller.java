@@ -141,7 +141,13 @@ final class Controller {
         }
         advertiser = adapter.getBluetoothLeAdvertiser();
         if (advertiser == null) return fail("Dieses Handy kann kein BLE-Advertising.");
-        final boolean off = code == OFF || code == p.offCode;
+        final boolean off = code == OFF || (!p.offSilent && code == p.offCode);
+        if (off && p.offSilent) {
+            stopAdvertising();
+            active = OFF;
+            autoOffAt = 0;
+            return report("AUS  ->  Senden gestoppt (dieses Profil sendet bei Aus kein Paket)  [" + source + "]");
+        }
         final int data = off ? p.offCode : code;
         byte[] packet;
         try {

@@ -20,6 +20,7 @@ import android.text.InputType;
 import android.util.SparseArray;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -78,6 +79,7 @@ public class LearnActivity extends Activity {
     private Button firstBtn;
     private Button nextBtn;
     private Button deriveBtn;
+    private CheckBox silentOff;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -132,9 +134,16 @@ public class LearnActivity extends Activity {
         root.addView(Ui.wide(nextBtn));
         TextView t3 = new TextView(this);
         t3.setText("Code oben eintragen (00 = Aus), nach dem Tippen das Kommando in der Original-App auslösen. "
-                + "Für Aus die laufende Funktion erneut drücken. Schon aufgenommene Pakete werden übersprungen.");
+                + "Für Aus die laufende Funktion erneut drücken. Schon aufgenommene Pakete werden übersprungen. "
+                + "Hört man dabei nichts Passendes, oder macht das Gerät später etwas anderes: unten \"Aus sendet kein "
+                + "Paket\" ankreuzen und Code 00 nicht aufnehmen.");
         t3.setTextSize(12);
         root.addView(t3);
+
+        silentOff = new CheckBox(this);
+        silentOff.setText("Aus sendet kein Paket (die Original-App hört bei Aus nur auf zu senden)");
+        silentOff.setOnCheckedChangeListener((b, on) -> setButtons(phase == 0));
+        root.addView(silentOff);
 
         recordedView = new TextView(this);
         recordedView.setTypeface(Typeface.MONOSPACE);
@@ -355,7 +364,10 @@ public class LearnActivity extends Activity {
             return;
         }
         recorded.put(currentCode(), Payload.fromHex(payload));
-        show(String.format(Locale.ROOT, "Code %02x gespeichert.", currentCode()));
+        Integer heard = g.counts.get(payload);
+        show(String.format(Locale.ROOT, "Code %02x gespeichert (%d mal gehört).%s", currentCode(), heard == null ? 0 : heard,
+                currentCode() == 0 && !silentOff.isChecked() && heard != null && heard < 3
+                        ? " Achtung: nur selten gehört, vielleicht sendet Aus gar kein Paket (dann \"Aus sendet kein Paket\" ankreuzen und 00 neu beginnen)." : ""));
         suggestNext();
     }
 
@@ -430,7 +442,7 @@ public class LearnActivity extends Activity {
         baseBtn.setEnabled(idle);
         firstBtn.setEnabled(idle && baseDone && chosen == null);
         nextBtn.setEnabled(idle && chosen != null);
-        deriveBtn.setEnabled(idle && chosen != null && recorded.containsKey(0) && recorded.size() >= 2);
+        deriveBtn.setEnabled(idle && chosen != null && (silentOff.isChecked() ? !recorded.isEmpty() : recorded.containsKey(0) && recorded.size() >= 2));
     }
 
     private void reset() {
@@ -447,11 +459,18 @@ public class LearnActivity extends Activity {
     // ---------------------------------------------------------------- Profil ableiten
 
     private void derive() {
-        if (chosen == null || !recorded.containsKey(0)) {
-            show("Aufgenommen werden muss mindestens Aus (Code 00) und eine Funktion.");
+        boolean silent = silentOff.isChecked();
+        if (chosen == null || (!silent && !recorded.containsKey(0))) {
+            show("Aufgenommen werden muss mindestens Aus (Code 00) und eine Funktion, oder \"Aus sendet kein Paket\" ankreuzen.");
             return;
         }
-        Learner.Result r = Learner.learn(recorded);
+        TreeMap<Integer, byte[]> usable = new TreeMap<>(recorded);
+        if (silent) usable.remove(0);                           // ein evtl. aufgenommenes 00 war kein echtes Aus-Paket
+        if (usable.isEmpty()) {
+            show("Es fehlt mindestens eine Funktion außer 00.");
+            return;
+        }
+        Learner.Result r = Learner.learn(usable);
         Profile p = new Profile();
         p.name = name.getText().toString().trim().isEmpty() ? "Gelerntes Profil" : name.getText().toString().trim();
         p.description = "Gelernt aus Mitschnitt: " + r.how;
@@ -460,8 +479,9 @@ public class LearnActivity extends Activity {
         p.connectable = chosen.connectable;
         p.payload = r.payload;
         p.offCode = 0;
+        p.offSilent = silent;
         for (int c : recorded.keySet()) {
-            if (c != 0) p.buttons.add(new Profile.Btn(c, "", ""));
+            if (usable.containsKey(c) && c != 0) p.buttons.add(new Profile.Btn(c, "", ""));
         }
         try {
             startActivity(new Intent(this, ProfileEditorActivity.class)

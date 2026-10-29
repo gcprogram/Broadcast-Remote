@@ -49,6 +49,8 @@ final class Profile {
     int repeatMs = 1000;
     Payload payload;
     int offCode = 0;
+    /** Aus sendet kein Paket, die Sendung wird nur gestoppt (Geraet schaltet von selbst ab). */
+    boolean offSilent = false;
     int offSendMs = 2000;
     int autoOffSeconds = 180;
     List<Btn> buttons = new ArrayList<>();
@@ -118,7 +120,8 @@ final class Profile {
 
         JSONObject off = o.optJSONObject("off");
         if (off != null) {
-            p.offCode = code(off.opt("code"), "off.code");
+            p.offSilent = off.optBoolean("silent", false);
+            if (!p.offSilent || off.has("code")) p.offCode = code(off.opt("code"), "off.code");
             p.offSendMs = range(off.optInt("sendMs", 2000), 200, 30000, "off.sendMs");
         }
         p.autoOffSeconds = range(o.optInt("autoOffSeconds", 180), 5, 3600, "autoOffSeconds");
@@ -223,7 +226,10 @@ final class Profile {
                 }
             }
             o.put("payload", pl);
-            o.put("off", new JSONObject().put("code", String.format(Locale.ROOT, "%02x", offCode)).put("sendMs", offSendMs));
+            JSONObject offJson = new JSONObject();
+            if (offSilent) offJson.put("silent", true);
+            else offJson.put("code", String.format(Locale.ROOT, "%02x", offCode)).put("sendMs", offSendMs);
+            o.put("off", offJson);
             o.put("autoOffSeconds", autoOffSeconds);
             JSONArray bs = new JSONArray();
             for (Btn b : buttons) {
