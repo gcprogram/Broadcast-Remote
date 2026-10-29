@@ -19,6 +19,7 @@ BODY, BODY_SHADE = (247, 249, 252), (205, 214, 228)
 BUTTON, OFF_RED, WAVE = (84, 174, 255), (229, 72, 77), (255, 255, 255)
 TEXT, TEXT_SHADOW = (255, 214, 10), (6, 38, 100)
 SS = 4                                                  # supersampling for smooth edges
+FIT, SHIFT = 0.76, 14                                   # scale of the artwork and downward shift (432-unit space)
 
 
 def foreground(size):
@@ -63,9 +64,15 @@ def foreground(size):
     ox, oy = 20 * s - l, 20 * s - t
     ld.text((ox + 4 * s, oy + 5 * s), text, font=font, fill=TEXT_SHADOW)
     ld.text((ox, oy), text, font=font, fill=TEXT)
-    layer = layer.rotate(10, resample=Image.BICUBIC, expand=True)        # counter-clockwise: rising to the right
+    layer = layer.rotate(8, resample=Image.BICUBIC, expand=True)        # counter-clockwise: rising to the right
     img.alpha_composite(layer, (int(216 * s - layer.size[0] / 2), int(104 * s - layer.size[1] / 2)))
-    return img.resize((size, size), Image.LANCZOS)
+    # Launchers mask the icon (circle, squircle ...): keep everything well inside the 66 dp safe zone,
+    # which is why the artwork is scaled down a little and moved down (the "MCP" corner is the critical one)
+    big = size * SS
+    fit = img.resize((int(big * FIT), int(big * FIT)), Image.LANCZOS)
+    canvas = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+    canvas.alpha_composite(fit, (int((big - fit.size[0]) / 2), int((big - fit.size[1]) / 2 + SHIFT * s)))
+    return canvas.resize((size, size), Image.LANCZOS)
 
 
 def preview(size=512):
