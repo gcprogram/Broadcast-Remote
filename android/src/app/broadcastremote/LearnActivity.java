@@ -78,6 +78,7 @@ public class LearnActivity extends Activity {
     private Button baseBtn;
     private Button firstBtn;
     private Button nextBtn;
+    private Button offBtn;
     private Button deriveBtn;
     private CheckBox silentOff;
 
@@ -133,8 +134,8 @@ public class LearnActivity extends Activity {
         nextBtn.setEnabled(false);
         root.addView(Ui.wide(nextBtn));
         TextView t3 = new TextView(this);
-        t3.setText("Code oben eintragen (00 = Aus), nach dem Tippen das Kommando in der Original-App auslösen. "
-                + "Für Aus die laufende Funktion erneut drücken. Schon aufgenommene Pakete werden übersprungen. "
+        t3.setText("Code oben eintragen, nach dem Tippen das Kommando in der Original-App auslösen. Die Nummer ist frei wählbar "
+                + "und ändert sich nach jedem Schritt von selbst. Aus hat unten einen eigenen Knopf. Schon aufgenommene Pakete werden übersprungen. "
                 + "Hört man dabei nichts Passendes, oder macht das Gerät später etwas anderes: unten \"Aus sendet kein "
                 + "Paket\" ankreuzen und Code 00 nicht aufnehmen.");
         t3.setTextSize(12);
@@ -144,6 +145,17 @@ public class LearnActivity extends Activity {
         silentOff.setText("Aus sendet kein Paket (die Original-App hört bei Aus nur auf zu senden)");
         silentOff.setOnCheckedChangeListener((b, on) -> setButtons(phase == 0));
         root.addView(silentOff);
+
+        offBtn = Ui.button(this, "Aus aufnehmen (Code 00, " + STEP_S + " s)", v -> {
+            code.setText("00");
+            startWindow(3, STEP_S);
+        });
+        offBtn.setEnabled(false);
+        root.addView(Ui.wide(offBtn));
+        TextView t4 = new TextView(this);
+        t4.setText("Nach dem Tippen in der Original-App Aus drücken. Aus wird nicht automatisch vorgeschlagen.");
+        t4.setTextSize(12);
+        root.addView(t4);
 
         recordedView = new TextView(this);
         recordedView.setTypeface(Typeface.MONOSPACE);
@@ -389,7 +401,7 @@ public class LearnActivity extends Activity {
     }
 
     private void suggestNext() {
-        int[] order = {1, 0, 2, 3, 4, 5, 6, 7, 8, 9};
+        int[] order = {1, 2, 3, 4, 5, 6, 7, 8, 9};      // Aus (00) nie vorschlagen: dafuer gibt es einen eigenen Knopf
         int next = -1;
         for (int c : order) {
             if (!recorded.containsKey(c)) {
@@ -400,6 +412,7 @@ public class LearnActivity extends Activity {
         if (next < 0) {
             next = recorded.lastKey() + 1;
             while (recorded.containsKey(next)) next++;
+            if (next > 255) next = 1;
         }
         code.setText(String.format(Locale.ROOT, "%02x", next & 0xff));
     }
@@ -442,6 +455,7 @@ public class LearnActivity extends Activity {
         baseBtn.setEnabled(idle);
         firstBtn.setEnabled(idle && baseDone && chosen == null);
         nextBtn.setEnabled(idle && chosen != null);
+        offBtn.setEnabled(idle && chosen != null);
         deriveBtn.setEnabled(idle && chosen != null && (silentOff.isChecked() ? !recorded.isEmpty() : recorded.containsKey(0) && recorded.size() >= 2));
     }
 
