@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 590" width="1000" height="590" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>Broadcast-Remote architecture</title>
+  <desc>An AI assistant talks stdio to a bridge on the PC, the bridge talks HTTPS to the Broadcast-Remote app on the phone, and the app broadcasts Bluetooth LE packets to a receive-only device. A second phone with the original app can be heard by the learn mode.</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#57606a"/>
+    </marker>
+  </defs>
+  <rect x="0.5" y="0.5" width="999" height="589" rx="12" fill="#ffffff" stroke="#d0d7de"/>
+  <text x="24" y="38" font-size="20" font-weight="700" fill="#1f2328">Broadcast-Remote: components</text>
+
+  <!-- AI / client -->
+  <rect x="20" y="105" width="180" height="90" rx="10" fill="#f6f8fa" stroke="#8c959f"/>
+  <text x="110" y="142" font-size="15" font-weight="700" fill="#1f2328" text-anchor="middle">AI assistant</text>
+  <text x="110" y="162" font-size="12" fill="#57606a" text-anchor="middle">or any MCP client / script</text>
+  <text x="110" y="180" font-size="12" fill="#57606a" text-anchor="middle">on a PC</text>
+
+  <!-- Bridge -->
+  <rect x="270" y="95" width="190" height="110" rx="10" fill="#fff8c5" stroke="#d4a72c"/>
+  <text x="365" y="126" font-size="15" font-weight="700" fill="#1f2328" text-anchor="middle">Bridge (optional)</text>
+  <text x="365" y="146" font-size="12" fill="#57606a" text-anchor="middle">broadcast_remote_bridge.py</text>
+  <text x="365" y="164" font-size="12" fill="#57606a" text-anchor="middle">pins the phone's certificate,</text>
+  <text x="365" y="180" font-size="12" fill="#57606a" text-anchor="middle">token from an env variable</text>
+
+  <line x1="200" y1="150" x2="268" y2="150" stroke="#57606a" stroke-width="2" marker-end="url(#a)"/>
+  <text x="234" y="140" font-size="11" fill="#57606a" text-anchor="middle">stdio</text>
+
+  <!-- phone -->
+  <rect x="580" y="62" width="400" height="355" rx="18" fill="#f6fbff" stroke="#54aeff" stroke-width="2"/>
+  <text x="780" y="86" font-size="14" font-weight="700" fill="#0969da" text-anchor="middle">Android phone: Broadcast-Remote app</text>
+
+  <rect x="595" y="104" width="190" height="82" rx="8" fill="#ddf4ff" stroke="#54aeff"/>
+  <text x="690" y="131" font-size="13" font-weight="700" fill="#1f2328" text-anchor="middle">Remote control server</text>
+  <text x="690" y="150" font-size="11" fill="#57606a" text-anchor="middle">HTTPS + MCP, access token,</text>
+  <text x="690" y="165" font-size="11" fill="#57606a" text-anchor="middle">off by default, private nets only</text>
+
+  <rect x="800" y="104" width="165" height="82" rx="8" fill="#ddf4ff" stroke="#54aeff"/>
+  <text x="882" y="131" font-size="13" font-weight="700" fill="#1f2328" text-anchor="middle">Screens</text>
+  <text x="882" y="150" font-size="11" fill="#57606a" text-anchor="middle">buttons · setup · sweep</text>
+  <text x="882" y="165" font-size="11" fill="#57606a" text-anchor="middle">listen test · learn mode</text>
+
+  <rect x="595" y="224" width="370" height="70" rx="8" fill="#dafbe1" stroke="#4ac26b"/>
+  <text x="780" y="251" font-size="13" font-weight="700" fill="#1f2328" text-anchor="middle">Profile (JSON) + packet engine</text>
+  <text x="780" y="271" font-size="11" fill="#57606a" text-anchor="middle">function code → packet:  prefix + (code xor k) + CRC-16,  or a table</text>
+
+  <rect x="595" y="332" width="190" height="62" rx="8" fill="#ddf4ff" stroke="#54aeff"/>
+  <text x="690" y="358" font-size="13" font-weight="700" fill="#1f2328" text-anchor="middle">BLE scanner</text>
+  <text x="690" y="376" font-size="11" fill="#57606a" text-anchor="middle">only for learn / listen test</text>
+
+  <rect x="800" y="332" width="165" height="62" rx="8" fill="#ddf4ff" stroke="#54aeff"/>
+  <text x="882" y="358" font-size="13" font-weight="700" fill="#1f2328" text-anchor="middle">BLE advertiser</text>
+  <text x="882" y="376" font-size="11" fill="#57606a" text-anchor="middle">repeats the packet every second</text>
+
+  <!-- arrows inside the phone -->
+  <line x1="690" y1="186" x2="690" y2="222" stroke="#57606a" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="882" y1="186" x2="882" y2="222" stroke="#57606a" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="882" y1="294" x2="882" y2="330" stroke="#57606a" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- bridge to phone -->
+  <line x1="460" y1="145" x2="593" y2="145" stroke="#57606a" stroke-width="2" marker-end="url(#a)"/>
+  <text x="520" y="124" font-size="11" fill="#57606a" text-anchor="middle">HTTPS</text>
+  <text x="520" y="137" font-size="11" fill="#57606a" text-anchor="middle">POST /mcp</text>
+  <text x="520" y="170" font-size="11" fill="#57606a" text-anchor="middle">Bearer token</text>
+  <text x="520" y="184" font-size="11" fill="#57606a" text-anchor="middle">LAN · VPN · USB</text>
+
+  <!-- user -->
+  <text x="940" y="52" font-size="12" fill="#57606a" text-anchor="middle">you tap a button</text>
+  <line x1="940" y1="56" x2="940" y2="102" stroke="#57606a" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#a)"/>
+
+  <!-- target device -->
+  <rect x="740" y="478" width="240" height="82" rx="10" fill="#ffebe9" stroke="#ff8182"/>
+  <text x="860" y="508" font-size="14" font-weight="700" fill="#1f2328" text-anchor="middle">Receive-only BLE device</text>
+  <text x="860" y="527" font-size="11" fill="#57606a" text-anchor="middle">no pairing, no name, never answers</text>
+  <text x="860" y="543" font-size="11" fill="#57606a" text-anchor="middle">(toys, lights, … with a remote app)</text>
+  <line x1="882" y1="394" x2="882" y2="476" stroke="#cf222e" stroke-width="3" marker-end="url(#a)"/>
+  <text x="870" y="432" font-size="11" fill="#cf222e" text-anchor="end">Bluetooth LE advertisement</text>
+  <text x="870" y="446" font-size="11" fill="#cf222e" text-anchor="end">(manufacturer data + UUID)</text>
+
+  <!-- second phone -->
+  <rect x="20" y="468" width="260" height="92" rx="10" fill="#ffffff" stroke="#8c959f" stroke-dasharray="6 4"/>
+  <text x="150" y="498" font-size="14" font-weight="700" fill="#1f2328" text-anchor="middle">Second phone / tablet</text>
+  <text x="150" y="517" font-size="11" fill="#57606a" text-anchor="middle">runs the original remote app,</text>
+  <text x="150" y="533" font-size="11" fill="#57606a" text-anchor="middle">only needed to learn a new device</text>
+  <path d="M280 514 H690 V396" fill="none" stroke="#57606a" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#a)"/>
+  <text x="485" y="506" font-size="11" fill="#57606a" text-anchor="middle">its broadcasts are heard by the learn mode</text>
+</svg>

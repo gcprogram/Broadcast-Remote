@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 640" width="1000" height="640" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>Broadcast-Remote: workflow and use cases</title>
+  <desc>Workflow: install the app, get a profile (built in, learn mode, file or JSON), buttons appear, use them by hand or from an AI assistant. Three example use cases follow.</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#57606a"/>
+    </marker>
+  </defs>
+  <rect x="0.5" y="0.5" width="999" height="639" rx="12" fill="#ffffff" stroke="#d0d7de"/>
+  <text x="24" y="38" font-size="20" font-weight="700" fill="#1f2328">From profile to buttons: how you use it</text>
+
+  <!-- workflow -->
+  <rect x="20" y="60" width="205" height="190" rx="10" fill="#f6fbff" stroke="#54aeff"/>
+  <circle cx="46" cy="86" r="14" fill="#0969da"/><text x="46" y="91" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">1</text>
+  <text x="68" y="91" font-size="14" font-weight="700" fill="#1f2328">Install</text>
+  <text x="34" y="122" font-size="12" fill="#57606a">Build the APK (PowerShell,</text>
+  <text x="34" y="139" font-size="12" fill="#57606a">no Gradle) and install it with</text>
+  <text x="34" y="156" font-size="12" fill="#57606a">adb. Allow the Bluetooth</text>
+  <text x="34" y="173" font-size="12" fill="#57606a">permission.</text>
+
+  <line x1="227" y1="155" x2="249" y2="155" stroke="#57606a" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="252" y="60" width="235" height="190" rx="10" fill="#dafbe1" stroke="#4ac26b"/>
+  <circle cx="278" cy="86" r="14" fill="#1a7f37"/><text x="278" y="91" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">2</text>
+  <text x="300" y="91" font-size="14" font-weight="700" fill="#1f2328">Get a profile</text>
+  <text x="266" y="120" font-size="12" fill="#1f2328">• built in: ZASJ047</text>
+  <text x="266" y="140" font-size="12" fill="#1f2328">• Learn mode: record the</text>
+  <text x="274" y="156" font-size="12" fill="#1f2328">original app on a 2nd phone</text>
+  <text x="266" y="176" font-size="12" fill="#1f2328">• load a profile file</text>
+  <text x="266" y="196" font-size="12" fill="#1f2328">• type or edit the JSON</text>
+  <text x="266" y="216" font-size="12" fill="#1f2328">• Sweep: find codes the</text>
+  <text x="274" y="232" font-size="12" fill="#1f2328">device reacts to</text>
+
+  <line x1="489" y1="155" x2="511" y2="155" stroke="#57606a" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="514" y="60" width="205" height="190" rx="10" fill="#f6fbff" stroke="#54aeff"/>
+  <circle cx="540" cy="86" r="14" fill="#0969da"/><text x="540" y="91" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">3</text>
+  <text x="562" y="91" font-size="14" font-weight="700" fill="#1f2328">Buttons</text>
+  <text x="528" y="122" font-size="12" fill="#57606a">Every function of the profile</text>
+  <text x="528" y="139" font-size="12" fill="#57606a">is a button, plus a large AUS.</text>
+  <text x="528" y="156" font-size="12" fill="#57606a">Reorder, rename, give them</text>
+  <text x="528" y="173" font-size="12" fill="#57606a">icons (Menu → Knöpfe</text>
+  <text x="528" y="190" font-size="12" fill="#57606a">bearbeiten).</text>
+
+  <line x1="721" y1="155" x2="743" y2="155" stroke="#57606a" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="746" y="60" width="234" height="190" rx="10" fill="#fff8c5" stroke="#d4a72c"/>
+  <circle cx="772" cy="86" r="14" fill="#9a6700"/><text x="772" y="91" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">4</text>
+  <text x="794" y="91" font-size="14" font-weight="700" fill="#1f2328">Use</text>
+  <text x="760" y="122" font-size="12" fill="#1f2328">• tap a button on the phone</text>
+  <text x="760" y="142" font-size="12" fill="#1f2328">• or switch on "Fernsteuerung"</text>
+  <text x="768" y="158" font-size="12" fill="#1f2328">and drive it from a PC or an</text>
+  <text x="768" y="174" font-size="12" fill="#1f2328">AI assistant (MCP)</text>
+  <text x="760" y="198" font-size="12" fill="#57606a">Safety: auto-off after 3 min,</text>
+  <text x="760" y="214" font-size="12" fill="#57606a">no Bluetooth = no sending.</text>
+
+  <text x="24" y="285" font-size="16" font-weight="700" fill="#1f2328">Use cases</text>
+
+  <!-- case A -->
+  <rect x="20" y="300" width="305" height="320" rx="10" fill="#ffffff" stroke="#d0d7de"/>
+  <text x="172" y="326" font-size="14" font-weight="700" fill="#1f2328" text-anchor="middle">A  Remote without the vendor app</text>
+  <rect x="46" y="350" width="104" height="70" rx="10" fill="#ddf4ff" stroke="#54aeff"/>
+  <text x="98" y="378" font-size="12" font-weight="700" fill="#1f2328" text-anchor="middle">Phone</text>
+  <text x="98" y="396" font-size="11" fill="#57606a" text-anchor="middle">buttons 01 … 09</text>
+  <line x1="152" y1="385" x2="198" y2="385" stroke="#cf222e" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#a)"/>
+  <rect x="202" y="350" width="94" height="70" rx="10" fill="#ffebe9" stroke="#ff8182"/>
+  <text x="249" y="378" font-size="12" font-weight="700" fill="#1f2328" text-anchor="middle">Device</text>
+  <text x="249" y="396" font-size="11" fill="#57606a" text-anchor="middle">receive-only</text>
+  <text x="36" y="452" font-size="12" fill="#57606a">You own a toy or gadget whose</text>
+  <text x="36" y="469" font-size="12" fill="#57606a">original app is gone, does not run on</text>
+  <text x="36" y="486" font-size="12" fill="#57606a">your phone, or is cluttered with ads.</text>
+  <text x="36" y="514" font-size="12" fill="#1f2328">1. Learn the packets once (Learn mode)</text>
+  <text x="36" y="532" font-size="12" fill="#1f2328">2. Name the buttons you care about</text>
+  <text x="36" y="550" font-size="12" fill="#1f2328">3. Use your own clean remote</text>
+  <text x="36" y="578" font-size="12" fill="#57606a">Share the profile file with others who</text>
+  <text x="36" y="595" font-size="12" fill="#57606a">own the same device.</text>
+
+  <!-- case B -->
+  <rect x="347" y="300" width="305" height="320" rx="10" fill="#ffffff" stroke="#d0d7de"/>
+  <text x="500" y="326" font-size="14" font-weight="700" fill="#1f2328" text-anchor="middle">B  Controlled by an AI assistant</text>
+  <rect x="368" y="344" width="262" height="50" rx="8" fill="#f6f8fa" stroke="#8c959f"/>
+  <text x="380" y="364" font-size="11" fill="#1f2328">"Run function 5 for two minutes,</text>
+  <text x="380" y="380" font-size="11" fill="#1f2328">then switch the device off."</text>
+  <line x1="499" y1="396" x2="499" y2="418" stroke="#57606a" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="368" y="420" width="262" height="48" rx="8" fill="#fff8c5" stroke="#d4a72c"/>
+  <text x="499" y="440" font-size="11" fill="#1f2328" text-anchor="middle">MCP tools: status · buttons</text>
+  <text x="499" y="456" font-size="11" fill="#1f2328" text-anchor="middle">send(code) · off</text>
+  <line x1="499" y1="470" x2="499" y2="492" stroke="#57606a" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="368" y="494" width="262" height="40" rx="8" fill="#ddf4ff" stroke="#54aeff"/>
+  <text x="499" y="518" font-size="11" fill="#1f2328" text-anchor="middle">Phone app → Bluetooth LE → device</text>
+  <text x="362" y="558" font-size="12" fill="#57606a" transform="translate(0,0)">Works for any device that listens to</text>
+  <text x="362" y="575" font-size="12" fill="#57606a">a broadcast and whose packets you</text>
+  <text x="362" y="592" font-size="12" fill="#57606a">know (lights, a watering</text>
+  <text x="362" y="609" font-size="12" fill="#57606a">controller ...). The token decides who may.</text>
+
+  <!-- case C -->
+  <rect x="675" y="300" width="305" height="320" rx="10" fill="#ffffff" stroke="#d0d7de"/>
+  <text x="827" y="326" font-size="14" font-weight="700" fill="#1f2328" text-anchor="middle">C  Find functions nobody listed</text>
+  <rect x="696" y="344" width="263" height="52" rx="8" fill="#ddf4ff" stroke="#54aeff"/>
+  <text x="827" y="366" font-size="11" fill="#1f2328" text-anchor="middle">Sweep sends code 00, 01, 02 … ff,</text>
+  <text x="827" y="382" font-size="11" fill="#1f2328" text-anchor="middle">one after the other</text>
+  <line x1="827" y1="398" x2="827" y2="420" stroke="#57606a" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="696" y="422" width="263" height="52" rx="8" fill="#ffebe9" stroke="#ff8182"/>
+  <text x="827" y="444" font-size="11" fill="#1f2328" text-anchor="middle">The device reacts to code 0b</text>
+  <text x="827" y="460" font-size="11" fill="#1f2328" text-anchor="middle">(you see or hear it)</text>
+  <line x1="827" y1="476" x2="827" y2="498" stroke="#57606a" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="696" y="500" width="263" height="36" rx="8" fill="#dafbe1" stroke="#4ac26b"/>
+  <text x="827" y="523" font-size="11" fill="#1f2328" text-anchor="middle">Tap MERKEN → "0b" becomes a button</text>
+  <text x="690" y="560" font-size="12" fill="#57606a">Some devices react to more codes than</text>
+  <text x="690" y="577" font-size="12" fill="#57606a">their original app offers. The sweep</text>
+  <text x="690" y="594" font-size="12" fill="#57606a">needs no second phone.</text>
+</svg>

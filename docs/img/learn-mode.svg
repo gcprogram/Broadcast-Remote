@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" width="1000" height="600" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>Broadcast-Remote learn mode</title>
+  <desc>Phone B runs the original remote app and broadcasts one packet per function. Phone A runs the learn mode, records the packets, derives a profile and creates a button for every learned function.</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#57606a"/>
+    </marker>
+  </defs>
+  <rect x="0.5" y="0.5" width="999" height="599" rx="12" fill="#ffffff" stroke="#d0d7de"/>
+  <text x="24" y="38" font-size="20" font-weight="700" fill="#1f2328">Learn mode: capture a device from its original app</text>
+
+  <!-- phone B -->
+  <rect x="20" y="70" width="220" height="200" rx="16" fill="#f6f8fa" stroke="#8c959f" stroke-width="2"/>
+  <text x="130" y="96" font-size="13" font-weight="700" fill="#1f2328" text-anchor="middle">Phone B or tablet</text>
+  <text x="130" y="113" font-size="11" fill="#57606a" text-anchor="middle">original remote app</text>
+  <g fill="#ffffff" stroke="#8c959f">
+    <rect x="42" y="128" width="52" height="40" rx="6"/><rect x="104" y="128" width="52" height="40" rx="6" fill="#ffdf5d" stroke="#d4a72c"/><rect x="166" y="128" width="52" height="40" rx="6"/>
+    <rect x="42" y="176" width="52" height="40" rx="6"/><rect x="104" y="176" width="52" height="40" rx="6"/><rect x="166" y="176" width="52" height="40" rx="6"/>
+  </g>
+  <text x="130" y="152" font-size="16" text-anchor="middle" fill="#1f2328">▶</text>
+  <text x="130" y="248" font-size="11" fill="#57606a" text-anchor="middle">you press the functions</text>
+
+  <!-- broadcast waves -->
+  <line x1="244" y1="170" x2="372" y2="170" stroke="#cf222e" stroke-width="3" stroke-dasharray="7 5" marker-end="url(#a)"/>
+  <text x="308" y="146" font-size="11" fill="#cf222e" text-anchor="middle">Bluetooth LE</text>
+  <text x="308" y="160" font-size="11" fill="#cf222e" text-anchor="middle">broadcast</text>
+  <text x="308" y="194" font-size="11" fill="#57606a" text-anchor="middle">one packet</text>
+  <text x="308" y="208" font-size="11" fill="#57606a" text-anchor="middle">per function</text>
+
+  <!-- phone A -->
+  <rect x="376" y="70" width="250" height="200" rx="16" fill="#f6fbff" stroke="#54aeff" stroke-width="2"/>
+  <text x="501" y="96" font-size="13" font-weight="700" fill="#0969da" text-anchor="middle">Phone A: Broadcast-Remote</text>
+  <text x="501" y="113" font-size="11" fill="#57606a" text-anchor="middle">Menu → Lernen (learn mode), listens only</text>
+  <rect x="392" y="124" width="218" height="124" rx="8" fill="#ffffff" stroke="#b6e3ff"/>
+  <g font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="10.5" fill="#1f2328">
+    <text x="402" y="144">01  6d b6 43 ce 97 fe 42 7c e4 9c 6c</text>
+    <text x="402" y="162">02  6d b6 43 ce 97 fe 42 7c e7 ...</text>
+    <text x="402" y="180">03  6d b6 43 ce 97 fe 42 7c e6 ...</text>
+    <text x="402" y="198">...</text>
+    <text x="402" y="216">00  6d b6 43 ce 97 fe 42 7c e5 15 7d</text>
+    <text x="402" y="235" fill="#57606a" font-family="system-ui, sans-serif">recorded packets (example)</text>
+  </g>
+
+  <!-- derive -->
+  <line x1="628" y1="170" x2="676" y2="170" stroke="#57606a" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="680" y="110" width="130" height="120" rx="10" fill="#dafbe1" stroke="#4ac26b"/>
+  <text x="745" y="140" font-size="13" font-weight="700" fill="#1f2328" text-anchor="middle">Profile (JSON)</text>
+  <text x="745" y="162" font-size="11" fill="#57606a" text-anchor="middle">formula if one fits,</text>
+  <text x="745" y="177" font-size="11" fill="#57606a" text-anchor="middle">otherwise a table</text>
+  <text x="745" y="192" font-size="11" fill="#57606a" text-anchor="middle">of packets</text>
+  <text x="745" y="214" font-size="11" fill="#57606a" text-anchor="middle">editable, savable</text>
+
+  <!-- buttons -->
+  <line x1="812" y1="170" x2="846" y2="170" stroke="#57606a" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="850" y="70" width="130" height="200" rx="16" fill="#f6fbff" stroke="#54aeff" stroke-width="2"/>
+  <text x="915" y="92" font-size="12" font-weight="700" fill="#0969da" text-anchor="middle">Buttons page</text>
+  <rect x="862" y="102" width="106" height="26" rx="6" fill="#ffebe9" stroke="#ff8182"/>
+  <text x="915" y="120" font-size="12" font-weight="700" fill="#cf222e" text-anchor="middle">AUS</text>
+  <g fill="#ffffff" stroke="#54aeff" font-size="11" text-anchor="middle">
+    <rect x="862" y="136" width="32" height="32" rx="6"/><rect x="899" y="136" width="32" height="32" rx="6"/><rect x="936" y="136" width="32" height="32" rx="6"/>
+    <rect x="862" y="173" width="32" height="32" rx="6"/><rect x="899" y="173" width="32" height="32" rx="6"/><rect x="936" y="173" width="32" height="32" rx="6"/>
+    <rect x="862" y="210" width="32" height="32" rx="6"/><rect x="899" y="210" width="32" height="32" rx="6"/><rect x="936" y="210" width="32" height="32" rx="6"/>
+  </g>
+  <g font-size="11" fill="#1f2328" text-anchor="middle">
+    <text x="878" y="157">01</text><text x="915" y="157">02</text><text x="952" y="157">03</text>
+    <text x="878" y="194">04</text><text x="915" y="194">05</text><text x="952" y="194">06</text>
+    <text x="878" y="231">07</text><text x="915" y="231">08</text><text x="952" y="231">09</text>
+  </g>
+  <text x="915" y="260" font-size="11" fill="#57606a" text-anchor="middle">one per learned function</text>
+
+  <!-- steps -->
+  <g>
+    <rect x="20" y="310" width="225" height="200" rx="10" fill="#ffffff" stroke="#d0d7de"/>
+    <circle cx="46" cy="338" r="14" fill="#0969da"/><text x="46" y="343" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="68" y="343" font-size="14" font-weight="700" fill="#1f2328">Measure surroundings</text>
+    <text x="34" y="374" font-size="12" fill="#57606a">Phone A listens for a few</text>
+    <text x="34" y="391" font-size="12" fill="#57606a">seconds while phone B stays</text>
+    <text x="34" y="408" font-size="12" fill="#57606a">idle. Whatever it hears now</text>
+    <text x="34" y="425" font-size="12" fill="#57606a">is background noise and is</text>
+    <text x="34" y="442" font-size="12" fill="#57606a">ignored later.</text>
+  </g>
+  <g>
+    <rect x="262" y="310" width="225" height="200" rx="10" fill="#ffffff" stroke="#d0d7de"/>
+    <circle cx="288" cy="338" r="14" fill="#0969da"/><text x="288" y="343" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="310" y="343" font-size="14" font-weight="700" fill="#1f2328">First function</text>
+    <text x="276" y="374" font-size="12" fill="#57606a">Tap "record", then start any</text>
+    <text x="276" y="391" font-size="12" fill="#57606a">function on phone B. The app</text>
+    <text x="276" y="408" font-size="12" fill="#57606a">finds the new sender (company</text>
+    <text x="276" y="425" font-size="12" fill="#57606a">ID, UUIDs, packet length) and</text>
+    <text x="276" y="442" font-size="12" fill="#57606a">keeps its packet as code 01.</text>
+  </g>
+  <g>
+    <rect x="504" y="310" width="225" height="200" rx="10" fill="#ffffff" stroke="#d0d7de"/>
+    <circle cx="530" cy="338" r="14" fill="#0969da"/><text x="530" y="343" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="552" y="343" font-size="14" font-weight="700" fill="#1f2328">The other functions</text>
+    <text x="518" y="374" font-size="12" fill="#57606a">Repeat for each function. The</text>
+    <text x="518" y="391" font-size="12" fill="#57606a">next code (02, 03, ...) is</text>
+    <text x="518" y="408" font-size="12" fill="#57606a">suggested; use the function's</text>
+    <text x="518" y="425" font-size="12" fill="#57606a">real number if you know it.</text>
+    <text x="518" y="442" font-size="12" fill="#57606a">"Record off" has its own button.</text>
+  </g>
+  <g>
+    <rect x="746" y="310" width="234" height="200" rx="10" fill="#ffffff" stroke="#d0d7de"/>
+    <circle cx="772" cy="338" r="14" fill="#0969da"/><text x="772" y="343" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">4</text>
+    <text x="794" y="343" font-size="14" font-weight="700" fill="#1f2328">Derive the profile</text>
+    <text x="760" y="374" font-size="12" fill="#57606a">The app looks for a formula</text>
+    <text x="760" y="391" font-size="12" fill="#57606a">(prefix + code + CRC-16),</text>
+    <text x="760" y="408" font-size="12" fill="#57606a">else stores a packet table.</text>
+    <text x="760" y="425" font-size="12" fill="#57606a">Check it in the editor, save:</text>
+    <text x="760" y="442" font-size="12" fill="#57606a">buttons appear on the main page.</text>
+  </g>
+
+  <rect x="20" y="528" width="960" height="52" rx="8" fill="#fff8c5" stroke="#d4a72c"/>
+  <text x="500" y="551" font-size="12.5" fill="#1f2328" text-anchor="middle">A phone cannot hear its own broadcasts or read another app's, so a second device has to send.</text>
+  <text x="500" y="569" font-size="12.5" fill="#1f2328" text-anchor="middle">The target device itself does not have to be present: the original app broadcasts either way.</text>
+</svg>

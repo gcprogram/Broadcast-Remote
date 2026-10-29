@@ -15,16 +15,15 @@ Some toys and gadgets are not paired and cannot be connected to. Their remote ap
 Bluetooth LE advertisement ("manufacturer data": a company ID plus a few payload bytes); the device picks it up
 and does what the payload says. Nothing comes back. If you know the packet, any phone can play the remote.
 
-```
- AI assistant / script ──stdio──► bridge (PC) ──HTTPS + token──► Phone: Broadcast-Remote app ──BLE broadcast──► device
-                                  optional                        buttons, profiles, learn mode           receive-only
-```
+![Architecture: AI assistant, bridge, phone app and receive-only device](docs/img/architecture.svg)
 
 - The **app** is the remote. Buttons send a *function code* (one byte); the profile turns it into the packet.
 - A **profile** says how to send (company ID, service UUIDs, repeat rate) and how to compute the packet for a code
   (a formula such as `prefix + (code xor k) + CRC-16`, or a table of complete packets).
 - The **bridge** ([pc/broadcast_remote_bridge.py](pc/broadcast_remote_bridge.py)) is optional and only needed to
   let an AI assistant or a script on a PC use the app; see [docs/MCP.md](docs/MCP.md).
+
+![Workflow and use cases](docs/img/use-cases.svg)
 
 ## Requirements
 
@@ -72,6 +71,8 @@ device never says), so label the buttons yourself.
   When you leave the app without the remote control running, it sends *off*.
 
 ## Learn mode: capture a device from the original app
+
+![Learn mode: phone B runs the original app, phone A records and derives a profile](docs/img/learn-mode.svg)
 
 A phone **cannot hear its own broadcasts**, nor read what another app on it sends, so you need two devices: phone A
 runs Broadcast-Remote in learn mode, phone B (or a tablet) runs the **original** remote app. The device itself does
