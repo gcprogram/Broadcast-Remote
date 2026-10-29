@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "name": "ZASJ047",
+  "description": "Broadcast-only toy (LS-Remote family). Packet captured from the original app, algorithm verified for codes 0-9.",
+  "advertising": {
+    "companyId": 255,
+    "serviceUuids": ["ae8f"],
+    "connectable": true,
+    "mode": "low_latency",
+    "txPower": "high",
+    "timeoutMs": 3000,
+    "repeatMs": 1000
+  },
+  "payload": {
+    "type": "template",
+    "prefix": "6db643ce97fe427c",
+    "xor": "e5",
+    "crc": {
+      "poly": "8408",
+      "init": "0000",
+      "reflected": true,
+      "swap": true,
+      "xorOut": "157d"
+    }
+  },
+  "off": { "code": 0, "sendMs": 2000 },
+  "autoOffSeconds": 180,
+  "buttons": [
+    { "code": "01" }, { "code": "02" }, { "code": "03" }, { "code": "04" }, { "code": "05" },
+    { "code": "06" }, { "code": "07" }, { "code": "08" }, { "code": "09" },
+    { "code": "0b" }, { "code": "0c" },
+    { "code": "11" }, { "code": "12" }, { "code": "13" }, { "code": "14" }, { "code": "15" },
+    { "code": "16" }, { "code": "17" }, { "code": "18" }, { "code": "19" },
+    { "code": "20" },
+    { "code": "31" }, { "code": "32" }, { "code": "33" }, { "code": "34" }, { "code": "35" },
+    { "code": "36" }, { "code": "37" }, { "code": "38" }, { "code": "39" }
+  ]
+}

@@ -1,0 +1,12 @@
+# build output and signing keys
+android/build/
+android/*.apk
+android/*.idsig
+android/debug.keystore
+# local secrets and captures
+*.pem
+.env
+bugreport*.zip
+# python / editor
+__pycache__/
+*.pyc
