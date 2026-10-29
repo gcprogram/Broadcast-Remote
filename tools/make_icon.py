@@ -93,6 +93,21 @@ def preview(size=512):
     return out
 
 
+def social_preview():
+    """1280 x 640 image for the GitHub repository's social preview (uploaded by hand in the repo settings)."""
+    w, h = 1280, 640
+    img = Image.new("RGB", (w, h), (13, 17, 23))
+    icon = preview(420)
+    img.paste(icon, (90, 110), icon)
+    d = ImageDraw.Draw(img)
+    title = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 76)
+    sub = ImageFont.truetype(r"C:\Windows\Fonts\segoeui.ttf", 36)
+    d.text((560, 195), "Broadcast-Remote", font=title, fill=(255, 255, 255))
+    for i, line in enumerate(("Remote control for receive-only", "Bluetooth LE devices, from your phone", "or from an AI assistant (MCP)")):
+        d.text((564, 310 + i * 52), line, font=sub, fill=(176, 196, 222))
+    return img
+
+
 def main():
     res = os.path.join(ROOT, "android", "res")
     for folder, px in (("mdpi", 108), ("hdpi", 162), ("xhdpi", 216), ("xxhdpi", 324), ("xxxhdpi", 432)):
@@ -111,6 +126,7 @@ def main():
         f.write('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n'
                 '    <color name="ic_launcher_background">%s</color>\n</resources>\n' % BG_FLAT)
     preview().save(os.path.join(ROOT, "docs", "img", "icon.png"), optimize=True)
+    social_preview().save(os.path.join(ROOT, "docs", "img", "social-preview.png"), optimize=True)
     print("icon written")
 
 
