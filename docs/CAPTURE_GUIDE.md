@@ -2,9 +2,9 @@
 
 ## Easiest: Learn mode in the app (needs a second phone or tablet)
 
-*Menü → Lernen* on the phone running Broadcast Remote; on a **second** device run the original app and choose the
+*Menu → Learn* on the phone running Broadcast Remote; on a **second** device run the original app and choose the
 device. This phone only listens (a phone cannot hear its own broadcasts or read another app's). Follow the steps on
-screen: measure the surroundings, then record one function after the other, then *Profil ableiten* and check the
+screen: measure the surroundings, then record one function after the other, then *Derive profile* and check the
 result in the editor. Record at least *off* (code 00) and three functions so that a formula can be derived.
 
 ## Alternative: HCI log from a bugreport (one phone + PC)
@@ -33,7 +33,7 @@ The device itself does **not** have to be present: the original app broadcasts r
 
    (`code` is whatever number you want to call the function; using the function number is natural.)
 5. `python tools/profile_tool.py learn capture.txt --name "My device" -o my-device.json`, then load that file in the
-   app under *Menü → Setup → Aus Datei laden*, or paste it into *Neues Profil eingeben*.
+   app under *Menu → Setup → Load from file*, or paste it into *Enter new profile*.
 
 Notes
 

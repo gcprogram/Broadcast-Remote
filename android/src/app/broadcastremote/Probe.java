@@ -24,9 +24,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Lauschtest: misst erst das Funkumfeld (Grundrauschen), sendet dann einen Code und scannt dabei weiter. Alles, was waehrend des Sendens neu auftaucht oder sich aendert, wird
- * aufgelistet. Zusaetzlich lauscht ein leerer GATT-Server auf Verbindungsversuche (unser Advertising ist
- * verbindbar). Zeigt, ob das Gerät irgendetwas zurueckfunkt.
+ * Listen test: first measures the radio environment (background noise), then sends a code and keeps scanning.
+ * Everything that newly shows up or changes while sending is listed. In addition an empty GATT server listens
+ * for connection attempts (our advertising is connectable). Shows whether the device sends anything back.
  */
 final class Probe {
     interface Ui {
@@ -56,7 +56,7 @@ final class Probe {
     private final List<String> events = new ArrayList<>();
     private Ui ui;
     private int code;
-    private int phase;                 // 0 = aus, 1 = Grundrauschen, 2 = senden + lauschen
+    private int phase;                 // 0 = off, 1 = background noise, 2 = send + listen
     private int left;
 
     Probe(Context ctx, Controller ctl) {
@@ -68,13 +68,13 @@ final class Probe {
         return phase != 0;
     }
 
-    /** Liefert eine Fehlermeldung oder null. Berechtigung BLUETOOTH_SCAN muss vorher erteilt sein. */
+    /** Returns an error message or null. The BLUETOOTH_SCAN permission has to be granted beforehand. */
     String start(int code, Ui ui) {
-        if (phase != 0) return "Lauschtest läuft schon.";
+        if (phase != 0) return "The listen test is already running.";
         BluetoothAdapter adapter = ctx.getSystemService(BluetoothManager.class).getAdapter();
-        if (adapter == null || !adapter.isEnabled()) return "Bluetooth ist aus.";
+        if (adapter == null || !adapter.isEnabled()) return "Bluetooth is off.";
         scanner = adapter.getBluetoothLeScanner();
-        if (scanner == null) return "Kein BLE-Scanner verfügbar.";
+        if (scanner == null) return "No BLE scanner available.";
         this.code = code;
         this.ui = ui;
         base = new LinkedHashMap<>();
@@ -91,13 +91,13 @@ final class Probe {
             }
 
             @Override public void onScanFailed(int errorCode) {
-                abort("Scan fehlgeschlagen, Fehler " + errorCode);
+                abort("Scan failed, error " + errorCode);
             }
         };
         try {
             scanner.startScan(null, new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build(), scanCb);
         } catch (SecurityException e) {
-            return "Berechtigung fehlt (Bluetooth-Geräte in der Nähe).";
+            return "Permission missing (Bluetooth: nearby devices).";
         }
         phase = 1;
         left = BASE_S;
@@ -105,27 +105,27 @@ final class Probe {
         return null;
     }
 
-    /** Abbrechen; sendet Aus, falls schon gesendet wurde. */
+    /** Cancel; sends off if sending had already started. */
     void cancel() {
         if (phase == 0) return;
         boolean sent = phase == 2;
         finishScan();
-        if (sent) ctl.send(Controller.OFF, "lauschtest");
-        ui.update("Lauschtest abgebrochen.", false);
+        if (sent) ctl.send(Controller.OFF, "listen test");
+        ui.update("Listen test cancelled.", false);
     }
 
     private void abort(String why) {
         if (phase == 0) return;
         boolean sent = phase == 2;
         finishScan();
-        if (sent) ctl.send(Controller.OFF, "lauschtest");
-        ui.update("Lauschtest abgebrochen: " + why, false);
+        if (sent) ctl.send(Controller.OFF, "listen test");
+        ui.update("Listen test cancelled: " + why, false);
     }
 
     private void tick() {
         h.removeCallbacksAndMessages(null);
         if (!Controller.bluetoothOn(ctx)) {
-            abort("Bluetooth ist aus.");
+            abort("Bluetooth is off.");
             return;
         }
         if (left <= 0) {
@@ -137,10 +137,10 @@ final class Probe {
             return;
         }
         if (phase == 1) {
-            ui.update(String.format("Phase 1/2: Grundrauschen messen, noch %d s ... (%d Geräte) - Gerät bitte AUS lassen",
+            ui.update(String.format("Phase 1/2: measuring the background noise, %d s left ... (%d devices) - please keep the device OFF",
                     left, base.size()), true);
         } else {
-            ui.update(String.format("Phase 2/2: Code 0x%02x wird gesendet, Gerät beobachten. Noch %d s ... (%d Geräte, %d Verbindungsereignisse)",
+            ui.update(String.format("Phase 2/2: sending code 0x%02x, watch the device. %d s left ... (%d devices, %d connection events)",
                     code, left, test.size(), events.size()), true);
         }
         left--;
@@ -155,7 +155,7 @@ final class Probe {
             gatt = ctx.getSystemService(BluetoothManager.class).openGattServer(ctx, new BluetoothGattServerCallback() {
                 @Override
                 public void onConnectionStateChange(BluetoothDevice device, int status, int newState) {
-                    String line = "Verbindung " + (newState == 2 ? "AUFGEBAUT" : "getrennt") + " von " + device.getAddress()
+                    String line = "Connection " + (newState == 2 ? "ESTABLISHED" : "closed") + " by " + device.getAddress()
                             + " (status " + status + ")";
                     Log.i(TAG, line);
                     h.post(() -> events.add(line));
@@ -164,9 +164,9 @@ final class Probe {
         } catch (SecurityException | IllegalStateException e) {
             gatt = null;
         }
-        String r = ctl.send(code, "lauschtest");
-        Log.i(TAG, "senden: " + r);
-        if (r.startsWith("Fehler")) {
+        String r = ctl.send(code, "listen test");
+        Log.i(TAG, "send: " + r);
+        if (r.startsWith("Error")) {
             abort(r);
             return;
         }
@@ -192,7 +192,7 @@ final class Probe {
 
     private void finish() {
         finishScan();
-        ctl.send(Controller.OFF, "lauschtest");
+        ctl.send(Controller.OFF, "listen test");
         ui.update(report(), false);
     }
 
@@ -239,29 +239,29 @@ final class Probe {
                 }
             }
         }
-        Collections.sort(fresh, (a, b) -> b.rssi - a.rssi);          // naechste (staerkste) zuerst
+        Collections.sort(fresh, (a, b) -> b.rssi - a.rssi);          // closest (strongest) first
 
         StringBuilder s = new StringBuilder();
-        s.append(String.format("Fertig. Grundrauschen: %d Geräte, beim Senden von 0x%02x: %d Geräte.%n", base.size(), code, test.size()));
-        s.append("Verbindungsversuche zum Handy: ").append(events.isEmpty() ? "keine" : events.size()).append("\n");
+        s.append(String.format("Done. Background noise: %d devices, while sending 0x%02x: %d devices.%n", base.size(), code, test.size()));
+        s.append("Connection attempts to the phone: ").append(events.isEmpty() ? "none" : events.size()).append("\n");
         for (String e : events) s.append("  ").append(e).append("\n");
-        s.append("\nNEU beim Senden (").append(fresh.size()).append(", stärkstes Signal zuerst):\n");
-        Log.i(TAG, "--- Ergebnis, code " + code);
+        s.append("\nNEW while sending (").append(fresh.size()).append(", strongest signal first):\n");
+        Log.i(TAG, "--- result, code " + code);
         int shown = 0;
         for (Dev d : fresh) {
             String line = String.format("%d dBm  %s  %s  %s", d.rssi, d.addr, d.name == null ? "-" : d.name,
                     d.records.isEmpty() ? "" : d.records.iterator().next());
-            Log.i(TAG, "NEU " + line);
+            Log.i(TAG, "NEW " + line);
             if (shown++ < 12) s.append("  ").append(line.length() > 110 ? line.substring(0, 110) + "..." : line).append("\n");
         }
-        if (fresh.isEmpty()) s.append("  keine\n");
-        s.append("\nGEÄNDERTE Pakete bekannter Geräte (").append(changed.size()).append("):\n");
+        if (fresh.isEmpty()) s.append("  none\n");
+        s.append("\nCHANGED packets of known devices (").append(changed.size()).append("):\n");
         shown = 0;
         for (String c : changed) {
-            Log.i(TAG, "GEAENDERT " + c);
+            Log.i(TAG, "CHANGED " + c);
             if (shown++ < 8) s.append("  ").append(c.length() > 110 ? c.substring(0, 110) + "..." : c).append("\n");
         }
-        if (changed.isEmpty()) s.append("  keine\n");
+        if (changed.isEmpty()) s.append("  none\n");
         return s.toString();
     }
 }

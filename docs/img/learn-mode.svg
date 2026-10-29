@@ -30,7 +30,7 @@
   <!-- phone A -->
   <rect x="376" y="70" width="250" height="200" rx="16" fill="#f6fbff" stroke="#54aeff" stroke-width="2"/>
   <text x="501" y="96" font-size="13" font-weight="700" fill="#0969da" text-anchor="middle">Phone A: Broadcast-Remote</text>
-  <text x="501" y="113" font-size="11" fill="#57606a" text-anchor="middle">Menu → Lernen (learn mode), listens only</text>
+  <text x="501" y="113" font-size="11" fill="#57606a" text-anchor="middle">Menu → Learn, listens only</text>
   <rect x="392" y="124" width="218" height="124" rx="8" fill="#ffffff" stroke="#b6e3ff"/>
   <g font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="10.5" fill="#1f2328">
     <text x="402" y="144">01  6d b6 43 ce 97 fe 42 7c e4 9c 6c</text>
@@ -55,7 +55,7 @@
   <rect x="850" y="70" width="130" height="200" rx="16" fill="#f6fbff" stroke="#54aeff" stroke-width="2"/>
   <text x="915" y="92" font-size="12" font-weight="700" fill="#0969da" text-anchor="middle">Buttons page</text>
   <rect x="862" y="102" width="106" height="26" rx="6" fill="#ffebe9" stroke="#ff8182"/>
-  <text x="915" y="120" font-size="12" font-weight="700" fill="#cf222e" text-anchor="middle">AUS</text>
+  <text x="915" y="120" font-size="12" font-weight="700" fill="#cf222e" text-anchor="middle">OFF</text>
   <g fill="#ffffff" stroke="#54aeff" font-size="11" text-anchor="middle">
     <rect x="862" y="136" width="32" height="32" rx="6"/><rect x="899" y="136" width="32" height="32" rx="6"/><rect x="936" y="136" width="32" height="32" rx="6"/>
     <rect x="862" y="173" width="32" height="32" rx="6"/><rect x="899" y="173" width="32" height="32" rx="6"/><rect x="936" y="173" width="32" height="32" rx="6"/>

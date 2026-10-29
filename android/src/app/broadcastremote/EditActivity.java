@@ -17,8 +17,8 @@ import java.util.Collections;
 import java.util.Locale;
 
 /**
- * Knoepfe des aktiven Profils bearbeiten: umsortieren (hoch/runter), Icon und Beschriftung vergeben,
- * Codes hinzufuegen oder entfernen. Aenderungen werden sofort im Profil gespeichert.
+ * Edit the buttons of the active profile: reorder (up/down), set icon and label, add or remove codes.
+ * Changes are saved to the profile immediately.
  */
 public class EditActivity extends Activity {
     private static final String[] ICONS = {
@@ -47,31 +47,31 @@ public class EditActivity extends Activity {
         }
 
         TextView help = new TextView(this);
-        help.setText("Profil " + profile.name + ". Reihenfolge mit ▲ ▼ ändern, auf das Icon tippen zum Auswählen, "
-                + "auf die Beschriftung tippen zum Umbenennen, ✕ entfernt einen Knopf.");
+        help.setText("Profile " + profile.name + ". Change the order with ▲ ▼, tap the icon to choose one, "
+                + "tap the label to rename it, ✕ removes a button.");
         root.addView(help);
 
         LinearLayout add = new LinearLayout(this);
         add.setGravity(Gravity.CENTER_VERTICAL);
         final EditText code = new EditText(this);
-        code.setHint("neuer Code hex, 00-ff");
+        code.setHint("new code, hex 00-ff");
         code.setInputType(InputType.TYPE_CLASS_TEXT);
         add.addView(code, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
         Button addBtn = new Button(this);
-        addBtn.setText("Hinzufügen");
+        addBtn.setText("Add");
         addBtn.setOnClickListener(v -> {
             try {
                 int c = Integer.parseInt(code.getText().toString().trim().replaceFirst("^0[xX]", ""), 16);
                 if (c < 0 || c > 255) throw new NumberFormatException();
                 if (profile.hasButton(c)) {
-                    Toast.makeText(this, "Code gibt es schon", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "That code already exists", Toast.LENGTH_SHORT).show();
                     return;
                 }
                 profile.buttons.add(new Profile.Btn(c, "", ""));
                 code.setText("");
                 save();
             } catch (NumberFormatException e) {
-                Toast.makeText(this, "Bitte Hex 00-ff", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Please enter hex 00-ff", Toast.LENGTH_SHORT).show();
             }
         });
         add.addView(addBtn);
@@ -118,7 +118,7 @@ public class EditActivity extends Activity {
             icon.setAllCaps(false);
             icon.setTextSize(24);
             icon.setText(b.icon.isEmpty() ? "＋" : b.icon);
-            icon.setLayoutParams(new LinearLayout.LayoutParams(dp(64), dp(56)));      // gleich grosse Icons
+            icon.setLayoutParams(new LinearLayout.LayoutParams(dp(64), dp(56)));      // equal-size icons
             icon.setOnClickListener(v -> pickIcon(b));
             row.addView(icon);
 
@@ -147,16 +147,16 @@ public class EditActivity extends Activity {
 
     private void rename(final Profile.Btn b) {
         final EditText input = new EditText(this);
-        input.setHint("Beschriftung (leer = Hexcode)");
+        input.setHint("Label (empty = hex code)");
         input.setText(b.label);
         new AlertDialog.Builder(this)
-                .setTitle("Beschriftung für " + String.format(Locale.ROOT, "%02x", b.code))
+                .setTitle("Label for " + String.format(Locale.ROOT, "%02x", b.code))
                 .setView(input)
-                .setPositiveButton("Übernehmen", (d, w) -> {
+                .setPositiveButton("Apply", (d, w) -> {
                     b.label = input.getText().toString().trim();
                     save();
                 })
-                .setNegativeButton("Abbrechen", null)
+                .setNegativeButton("Cancel", null)
                 .show();
     }
 
@@ -188,26 +188,26 @@ public class EditActivity extends Activity {
         }
 
         final EditText own = new EditText(this);
-        own.setHint("oder eigenes Zeichen/Emoji");
+        own.setHint("or your own character/emoji");
         box.addView(own);
 
         dialog[0] = new AlertDialog.Builder(this)
-                .setTitle("Icon für " + b.caption())
+                .setTitle("Icon for " + b.caption())
                 .setView(box)
-                .setPositiveButton("Eigenes übernehmen", (d, w) -> {
+                .setPositiveButton("Use own", (d, w) -> {
                     String t = own.getText().toString().trim();
                     if (!t.isEmpty()) {
-                        // hoechstens 4 Codepoints (ein Emoji inkl. Variantenauswahl), damit alle Icons gleich gross sind
+                        // at most 4 code points (one emoji incl. variation selector) so that all icons have the same size
                         int end = t.offsetByCodePoints(0, Math.min(4, t.codePointCount(0, t.length())));
                         b.icon = t.substring(0, end);
                         save();
                     }
                 })
-                .setNeutralButton("Kein Icon", (d, w) -> {
+                .setNeutralButton("No icon", (d, w) -> {
                     b.icon = "";
                     save();
                 })
-                .setNegativeButton("Abbrechen", null)
+                .setNegativeButton("Cancel", null)
                 .create();
         dialog[0].show();
     }

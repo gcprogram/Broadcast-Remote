@@ -14,7 +14,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 
-/** Kleine Hilfen fuer die programmatisch gebauten Oberflaechen. */
+/** Small helpers for the programmatically built screens. */
 final class Ui {
     private Ui() {
     }
@@ -23,7 +23,7 @@ final class Ui {
         return (int) (v * c.getResources().getDisplayMetrics().density);
     }
 
-    /** Knopf, der sich im horizontalen LinearLayout die Breite teilt. */
+    /** Button that shares the width in a horizontal LinearLayout. */
     static Button button(Context c, String text, View.OnClickListener l) {
         Button b = new Button(c);
         b.setText(text);
@@ -33,13 +33,13 @@ final class Ui {
         return b;
     }
 
-    /** Knopf in voller Breite fuer senkrechte Layouts (Ui.button ist fuer waagerechte Reihen gedacht). */
+    /** Full-width button for vertical layouts (Ui.button is meant for horizontal rows). */
     static Button wide(Button b) {
         b.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         return b;
     }
 
-    /** Knopfbeschriftung: gleich grosses Icon ueber der Beschriftung, ohne Icon nur die Beschriftung. */
+    /** Button caption: an equal-size icon above the label; without an icon just the label. */
     static CharSequence caption(Profile.Btn b) {
         String label = b.caption();
         if (b.icon.isEmpty()) {
@@ -57,7 +57,7 @@ final class Ui {
         return Build.VERSION.SDK_INT < 31 || a.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED;
     }
 
-    /** Scannen: ab Android 12 BLUETOOTH_SCAN, davor die Standort-Berechtigung. */
+    /** Scanning: BLUETOOTH_SCAN from Android 12, the location permission before that. */
     static boolean hasScan(Activity a) {
         if (Build.VERSION.SDK_INT >= 31) return a.checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED;
         return Build.VERSION.SDK_INT < 23
@@ -69,7 +69,7 @@ final class Ui {
                 : Manifest.permission.ACCESS_FINE_LOCATION}, 3);
     }
 
-    /** Vor Android 12 liefert ein Bluetooth-Scan nur dann Ergebnisse, wenn die Ortungsdienste an sind. */
+    /** Before Android 12 a Bluetooth scan only returns results while location services are on. */
     static boolean locationOff(Activity a) {
         if (Build.VERSION.SDK_INT >= 31) return false;
         if (Build.VERSION.SDK_INT >= 28) return !a.getSystemService(LocationManager.class).isLocationEnabled();
@@ -80,8 +80,8 @@ final class Ui {
         }
     }
 
-    static final String LOCATION_HINT = "Dieses Android braucht für Bluetooth-Scans eingeschaltete Ortungsdienste "
-            + "(Standort). Bitte einschalten und nochmal starten.";
+    static final String LOCATION_HINT = "This Android version needs location services switched on for Bluetooth scans. "
+            + "Please switch them on and start again.";
 
     static void requestSend(Activity a) {
         if (Build.VERSION.SDK_INT >= 31 && !has(a, Manifest.permission.BLUETOOTH_ADVERTISE)) {

@@ -21,17 +21,17 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
- * Setup: Profile auswaehlen, aus einer Datei laden, in eine Datei speichern, kopieren, loeschen und per JSON
- * bearbeiten. Das aktive Profil bestimmt, wie gesendet wird und welche Knoepfe es gibt.
+ * Setup: choose profiles, load from a file, save to a file, copy, delete and edit as JSON.
+ * The active profile determines how to send and which buttons exist.
  */
 public class SetupActivity extends Activity {
     private static final int REQ_OPEN = 11;
     private static final int REQ_SAVE = 12;
 
-    /** Leeres Geruest, falls noch kein Profil existiert (Werte des Beispielgeraets als Platzhalter). */
+    /** Empty skeleton for entering a new profile (placeholder values). */
     private static final String SKELETON = "{\n"
             + "  \"format\": 1,\n"
-            + "  \"name\": \"Neues Profil\",\n"
+            + "  \"name\": \"New profile\",\n"
             + "  \"advertising\": {\n"
             + "    \"companyId\": 255,\n"
             + "    \"serviceUuids\": [],\n"
@@ -64,9 +64,9 @@ public class SetupActivity extends Activity {
         root.setPadding(32, 48, 32, 32);
 
         TextView help = new TextView(this);
-        help.setText("Ein Profil beschreibt, wie ein Gerät angesprochen wird (Funkparameter, Paketberechnung, Knöpfe). "
-                + "Es liegt als JSON-Datei vor und kann geladen, gespeichert und hier bearbeitet werden. Beim Wechsel "
-                + "wird erst Aus gesendet.");
+        help.setText("A profile describes how a device is addressed (radio parameters, packet computation, buttons). "
+                + "It is a JSON file and can be loaded, saved and edited here. When you switch profiles "
+                + "off is sent first.");
         help.setTextSize(13);
         root.addView(help);
 
@@ -76,15 +76,15 @@ public class SetupActivity extends Activity {
         root.addView(list);
 
         LinearLayout row1 = new LinearLayout(this);
-        row1.addView(Ui.button(this, "Bearbeiten", v -> edit()));
-        row1.addView(Ui.button(this, "Kopieren", v -> duplicate()));
-        row1.addView(Ui.button(this, "Löschen", v -> delete()));
+        row1.addView(Ui.button(this, "Edit", v -> edit()));
+        row1.addView(Ui.button(this, "Copy", v -> duplicate()));
+        row1.addView(Ui.button(this, "Delete", v -> delete()));
         root.addView(row1);
         LinearLayout row2 = new LinearLayout(this);
-        row2.addView(Ui.button(this, "Aus Datei laden", v -> openFile()));
-        row2.addView(Ui.button(this, "In Datei speichern", v -> saveFile()));
+        row2.addView(Ui.button(this, "Load from file", v -> openFile()));
+        row2.addView(Ui.button(this, "Save to file", v -> saveFile()));
         root.addView(row2);
-        root.addView(Ui.wide(Ui.button(this, "Neues Profil eingeben", v -> create())));
+        root.addView(Ui.wide(Ui.button(this, "Enter new profile", v -> create())));
 
         info = new TextView(this);
         info.setPadding(0, 16, 0, 0);
@@ -107,7 +107,7 @@ public class SetupActivity extends Activity {
         String active = ProfileStore.activeName(this);
         if (names.isEmpty()) {
             TextView none = new TextView(this);
-            none.setText("Keine Profile vorhanden. Lade eines aus einer Datei oder gib ein neues ein.");
+            none.setText("No profiles. Load one from a file or enter a new one.");
             list.addView(none);
             return;
         }
@@ -125,15 +125,15 @@ public class SetupActivity extends Activity {
 
     private void activate(String name) {
         if (name.equals(ProfileStore.activeName(this))) return;
-        ctl.send(Controller.OFF, "profilwechsel");
+        ctl.send(Controller.OFF, "profile change");
         ProfileStore.setActive(this, name);
-        info.setText("Aktiv: " + name);
+        info.setText("Active: " + name);
         rebuild();
     }
 
     private String active() {
         String a = ProfileStore.activeName(this);
-        if (a == null) Toast.makeText(this, "Kein Profil ausgewählt", Toast.LENGTH_SHORT).show();
+        if (a == null) Toast.makeText(this, "No profile selected", Toast.LENGTH_SHORT).show();
         return a;
     }
 
@@ -143,7 +143,7 @@ public class SetupActivity extends Activity {
         try {
             startEditor(ProfileStore.load(this, a).toJson(), false);
         } catch (IOException | IllegalArgumentException e) {
-            info.setText("Profil nicht lesbar: " + e.getMessage());
+            info.setText("Profile not readable: " + e.getMessage());
         }
     }
 
@@ -161,42 +161,42 @@ public class SetupActivity extends Activity {
         final String a = active();
         if (a == null) return;
         final EditText input = new EditText(this);
-        input.setText(a + " Kopie");
-        new AlertDialog.Builder(this).setTitle("Name der Kopie").setView(input)
-                .setPositiveButton("Kopieren", (d, w) -> {
+        input.setText(a + " copy");
+        new AlertDialog.Builder(this).setTitle("Name of the copy").setView(input)
+                .setPositiveButton("Copy", (d, w) -> {
                     String name = input.getText().toString().trim();
                     if (name.isEmpty() || ProfileStore.exists(this, name)) {
-                        info.setText("Name leer oder schon vergeben.");
+                        info.setText("Name empty or already taken.");
                         return;
                     }
                     try {
                         Profile p = ProfileStore.load(this, a);
                         p.name = name;
                         ProfileStore.save(this, p);
-                        info.setText("Kopie angelegt: " + name);
+                        info.setText("Copy created: " + name);
                         rebuild();
                     } catch (IOException | IllegalArgumentException e) {
-                        info.setText("Kopieren fehlgeschlagen: " + e.getMessage());
+                        info.setText("Copying failed: " + e.getMessage());
                     }
                 })
-                .setNegativeButton("Abbrechen", null).show();
+                .setNegativeButton("Cancel", null).show();
     }
 
     private void delete() {
         final String a = active();
         if (a == null) return;
-        new AlertDialog.Builder(this).setMessage("Profil \"" + a + "\" löschen?")
-                .setPositiveButton("Löschen", (d, w) -> {
-                    ctl.send(Controller.OFF, "profil geloescht");
+        new AlertDialog.Builder(this).setMessage("Delete profile \"" + a + "\"?")
+                .setPositiveButton("Delete", (d, w) -> {
+                    ctl.send(Controller.OFF, "profile deleted");
                     ProfileStore.delete(this, a);
                     ProfileStore.setActive(this, "");
-                    info.setText("Gelöscht: " + a);
+                    info.setText("Deleted: " + a);
                     rebuild();
                 })
-                .setNegativeButton("Abbrechen", null).show();
+                .setNegativeButton("Cancel", null).show();
     }
 
-    // ---------------------------------------------------------------- Dateien (Storage Access Framework)
+    // ---------------------------------------------------------------- files (Storage Access Framework)
 
     private void openFile() {
         Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*");
@@ -209,7 +209,7 @@ public class SetupActivity extends Activity {
         try {
             pendingExport = ProfileStore.load(this, a).toJson();
         } catch (IOException | IllegalArgumentException e) {
-            info.setText("Profil nicht lesbar: " + e.getMessage());
+            info.setText("Profile not readable: " + e.getMessage());
             return;
         }
         Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
@@ -227,9 +227,9 @@ public class SetupActivity extends Activity {
         } else if (request == REQ_SAVE && pendingExport != null) {
             try (OutputStream out = getContentResolver().openOutputStream(uri)) {
                 out.write(pendingExport.getBytes(StandardCharsets.UTF_8));
-                info.setText("Profil gespeichert.");
+                info.setText("Profile saved.");
             } catch (IOException | NullPointerException e) {
-                info.setText("Speichern fehlgeschlagen: " + e);
+                info.setText("Saving failed: " + e);
             }
             pendingExport = null;
         }
@@ -240,13 +240,13 @@ public class SetupActivity extends Activity {
         try (InputStream in = getContentResolver().openInputStream(uri)) {
             p = Profile.parse(ProfileStore.read(in));
         } catch (IOException | IllegalArgumentException | NullPointerException e) {
-            info.setText("Datei nicht lesbar: " + e.getMessage());
+            info.setText("File not readable: " + e.getMessage());
             return;
         }
         if (ProfileStore.exists(this, p.name)) {
-            new AlertDialog.Builder(this).setMessage("Profil \"" + p.name + "\" gibt es schon. Überschreiben?")
-                    .setPositiveButton("Überschreiben", (d, w) -> store(p))
-                    .setNegativeButton("Abbrechen", null).show();
+            new AlertDialog.Builder(this).setMessage("Profile \"" + p.name + "\" already exists. Overwrite?")
+                    .setPositiveButton("Overwrite", (d, w) -> store(p))
+                    .setNegativeButton("Cancel", null).show();
         } else {
             store(p);
         }
@@ -254,13 +254,13 @@ public class SetupActivity extends Activity {
 
     private void store(Profile p) {
         try {
-            ctl.send(Controller.OFF, "profil geladen");
+            ctl.send(Controller.OFF, "profile loaded");
             ProfileStore.save(this, p);
             ProfileStore.setActive(this, p.name);
-            info.setText("Geladen und aktiv: " + p.name);
+            info.setText("Loaded and active: " + p.name);
             rebuild();
         } catch (IOException e) {
-            info.setText("Speichern fehlgeschlagen: " + e.getMessage());
+            info.setText("Saving failed: " + e.getMessage());
         }
     }
 }

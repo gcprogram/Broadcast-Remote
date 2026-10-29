@@ -25,7 +25,7 @@ import java.util.List;
 
 import javax.net.ssl.SSLContext;
 
-/** Schluessel und selbstsigniertes Zertifikat der App (privat gespeichert, bei IP-Wechsel neu signiert). */
+/** Key and self-signed certificate of the app (stored privately, re-signed when the IP changes). */
 final class Tls {
     static final class Identity {
         SSLContext context;
@@ -38,7 +38,7 @@ final class Tls {
     private Tls() {
     }
 
-    /** Private IPv4-Adressen dieses Handys (WLAN, VPN) plus Loopback. */
+    /** Private IPv4 addresses of this phone (Wi-Fi, VPN) plus loopback. */
     static List<String> localIps() {
         List<String> ips = new ArrayList<>();
         ips.add("127.0.0.1");

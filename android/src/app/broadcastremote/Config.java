@@ -5,7 +5,7 @@ import android.content.SharedPreferences;
 
 import java.security.SecureRandom;
 
-/** App-Einstellungen: Zugriffstoken, Port, aktives Profil. Geraeteprofile selbst liegen in ProfileStore. */
+/** App settings: access token, port, active profile. The device profiles themselves live in ProfileStore. */
 final class Config {
     private Config() {
     }

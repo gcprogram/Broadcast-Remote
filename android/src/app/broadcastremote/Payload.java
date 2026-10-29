@@ -3,15 +3,15 @@ package app.broadcastremote;
 import java.util.Map;
 
 /**
- * Berechnet die Nutzbytes eines Broadcast-Pakets fuer ein Datenbyte (Funktionscode). Reines Java ohne
- * Android-Klassen, damit es am PC getestet werden kann (siehe tests/PayloadCheck.java).
+ * Computes the payload bytes of a broadcast packet for one data byte (function code). Plain Java without
+ * Android classes so that it can be tested on a PC (see tests/PayloadCheck.java).
  *
- * Zwei Arten:
- *  - Vorlage ("template"): prefix + [code ^ xor] + optionale CRC-16 (zwei Bytes, Big-Endian)
- *  - Tabelle ("table"): fertige Pakete je Code, z. B. aus einem Mitschnitt der Original-App
+ * Two kinds:
+ *  - template ("template"): prefix + [code ^ xor] + optional CRC-16 (two bytes, big endian)
+ *  - table ("table"): finished packets per code, for example from a capture of the original app
  */
 final class Payload {
-    /** CRC-16 ueber das (unverschluesselte) Datenbyte. Ausgabe = (swap ? vertauschte Bytes : crc) ^ xorOut. */
+    /** CRC-16 over the plain data byte. Output = (swap ? swapped bytes : crc) ^ xorOut. */
     static final class Crc {
         final int poly;
         final int init;
@@ -43,8 +43,8 @@ final class Payload {
 
     final byte[] prefix;
     final int xor;
-    final Crc crc;                          // null = keine Pruefsumme
-    final Map<Integer, byte[]> table;       // null = Vorlage
+    final Crc crc;                          // null = no checksum
+    final Map<Integer, byte[]> table;       // null = template
 
     private Payload(byte[] prefix, int xor, Crc crc, Map<Integer, byte[]> table) {
         this.prefix = prefix;
@@ -65,11 +65,11 @@ final class Payload {
         return table != null;
     }
 
-    /** Wirft IllegalArgumentException, wenn die Tabelle den Code nicht enthaelt. */
+    /** Throws IllegalArgumentException if the table does not contain the code. */
     byte[] packet(int code) {
         if (table != null) {
             byte[] p = table.get(code);
-            if (p == null) throw new IllegalArgumentException(String.format("Kein Paket für Code 0x%02x in der Tabelle", code));
+            if (p == null) throw new IllegalArgumentException(String.format("No packet for code 0x%02x in the table", code));
             return p.clone();
         }
         int extra = 1 + (crc != null ? 2 : 0);
@@ -92,7 +92,7 @@ final class Payload {
 
     static byte[] fromHex(String text) {
         String t = text.replaceAll("[\\s:_-]", "");
-        if (t.length() % 2 != 0) throw new IllegalArgumentException("Hex mit ungerader Länge: " + text);
+        if (t.length() % 2 != 0) throw new IllegalArgumentException("Hex string of odd length: " + text);
         byte[] b = new byte[t.length() / 2];
         for (int i = 0; i < b.length; i++) {
             b[i] = (byte) Integer.parseInt(t.substring(2 * i, 2 * i + 2), 16);

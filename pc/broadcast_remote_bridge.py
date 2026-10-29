@@ -1,12 +1,12 @@
-"""stdio-MCP-Bruecke zur Broadcast-Remote-App auf dem Handy.
+"""stdio MCP bridge to the Broadcast-Remote app on the phone.
 
-Claude Code startet dieses Skript als lokalen MCP-Server (stdio). Jede Anfrage wird per HTTPS an die App
-weitergereicht. Das Handy-Zertifikat wird hier selbst geprueft (nur diese eine Datei wird als Vertrauensanker
-benutzt, nichts im Windows-Zertifikatsspeicher), das Token kommt aus der Umgebungsvariable BROADCAST_REMOTE_TOKEN
-und steht in keiner Datei.
+An MCP client (for example Claude Code) starts this script as a local MCP server (stdio). Every request is
+forwarded to the app over HTTPS. The phone's certificate is checked here (only this one file is used as the trust
+anchor, nothing is added to the operating system's certificate store), and the token comes from the environment
+variable BROADCAST_REMOTE_TOKEN, so it is not stored in any file.
 
-Umgebung: BROADCAST_REMOTE_TOKEN (Pflicht), BROADCAST_REMOTE_URL (Pflicht, z. B. https://192.168.1.20:8443/mcp),
-BROADCAST_REMOTE_CERT (Standard ~/.broadcast-remote/cert.pem).
+Environment: BROADCAST_REMOTE_TOKEN (required), BROADCAST_REMOTE_URL (required, e.g. https://192.168.1.20:8443/mcp),
+BROADCAST_REMOTE_CERT (default ~/.broadcast-remote/cert.pem).
 """
 import json
 import os
@@ -38,12 +38,12 @@ def error_reply(message_id, text):
 
 
 def main():
-    sys.stdin.reconfigure(encoding="utf-8-sig")      # toleriert ein Byte-Order-Mark am Anfang
+    sys.stdin.reconfigure(encoding="utf-8-sig")      # tolerates a byte order mark at the start
     sys.stdout.reconfigure(encoding="utf-8")
     if not TOKEN:
-        log("BROADCAST_REMOTE_TOKEN ist nicht gesetzt")
+        log("BROADCAST_REMOTE_TOKEN is not set")
     if not URL:
-        log("BROADCAST_REMOTE_URL ist nicht gesetzt")
+        log("BROADCAST_REMOTE_URL is not set")
     context = ssl.create_default_context(cafile=CERT)
     for line in sys.stdin:
         line = line.strip()
@@ -57,11 +57,11 @@ def main():
         try:
             body = forward(line, context)
         except urllib.error.HTTPError as e:
-            reply = "HTTP %d%s" % (e.code, " (Token falsch?)" if e.code == 401 else "")
+            reply = "HTTP %d%s" % (e.code, " (wrong token?)" if e.code == 401 else "")
             body = error_reply(message_id, reply) if message_id is not None else ""
-        except Exception as e:                      # Handy aus, Fernsteuerung aus, falsches WLAN, TLS ...
+        except Exception as e:                      # phone off, remote control off, wrong network, TLS ...
             log(repr(e))
-            body = error_reply(message_id, "Handy nicht erreichbar oder Fernsteuerung aus: %s" % e) \
+            body = error_reply(message_id, "Phone not reachable or remote control off: %s" % e) \
                 if message_id is not None else ""
         if body.strip():
             sys.stdout.write(body.strip() + "\n")

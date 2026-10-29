@@ -27,7 +27,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.X509ExtendedKeyManager;
 
-/** Selbstsigniertes EC-Zertifikat (mit SAN fuer IPs/Namen) von Hand in DER gebaut - ohne Zusatzbibliothek. */
+/** Self-signed EC certificate (with SAN for IPs/names) built by hand in DER - without an extra library. */
 final class Certs {
     private static final byte[] SIG_ALG = tlv(0x30, tlv(0x06,
             new byte[]{0x2A, (byte) 0x86, 0x48, (byte) 0xCE, 0x3D, 0x04, 0x03, 0x02}));   // ecdsa-with-SHA256
@@ -66,12 +66,12 @@ final class Certs {
         return tlv(0x17, f.format(d).getBytes(StandardCharsets.US_ASCII));
     }
 
-    /** Zertifikat (DER) fuer den Schluessel; Namen als DNS-, IPv4-Adressen als iPAddress-Eintrag. */
+    /** Certificate (DER) for the key; names as DNS entries, IPv4 addresses as iPAddress entries. */
     static byte[] selfSigned(KeyPair kp, List<String> dnsNames, List<String> ips, Date from, Date to)
             throws GeneralSecurityException, java.io.IOException {
         byte[] serial = new byte[8];
         new SecureRandom().nextBytes(serial);
-        serial[0] = (byte) ((serial[0] & 0x3f) | 0x40);      // positiv, kein fuehrendes Nullbyte
+        serial[0] = (byte) ((serial[0] & 0x3f) | 0x40);      // positive, no leading zero byte
 
         byte[] name = tlv(0x30, tlv(0x31, tlv(0x30, tlv(0x06, new byte[]{0x55, 0x04, 0x03}),
                 tlv(0x0C, "Broadcast Remote".getBytes(StandardCharsets.UTF_8)))));

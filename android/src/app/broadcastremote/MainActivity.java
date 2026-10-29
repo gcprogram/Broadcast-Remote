@@ -19,7 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Hauptscreen: nur Status, AUS und das Raster der Knoepfe des aktiven Profils. Alles andere liegt im Menue. */
+/** Main screen: just the status, OFF and the grid of buttons of the active profile. Everything else is in the menu. */
 public class MainActivity extends Activity implements Controller.Listener {
     private static final int COLUMNS = 3;
 
@@ -30,7 +30,7 @@ public class MainActivity extends Activity implements Controller.Listener {
     private TextView autoInfo;
     private LinearLayout grid;
     private final Map<Integer, Button> cells = new HashMap<>();
-    private final List<Button> controls = new ArrayList<>();      // alles, was nur mit Bluetooth an sendet
+    private final List<Button> controls = new ArrayList<>();      // everything that only sends while Bluetooth is on
 
     @Override
     protected void onCreate(Bundle state) {
@@ -46,7 +46,7 @@ public class MainActivity extends Activity implements Controller.Listener {
         profileName.setTextSize(20);
         profileName.setTypeface(null, Typeface.BOLD);
         top.addView(profileName, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-        Button menu = Ui.button(this, "Menü", null);
+        Button menu = Ui.button(this, "Menu", null);
         menu.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         menu.setOnClickListener(v -> showMenu(menu));
         top.addView(menu);
@@ -60,7 +60,7 @@ public class MainActivity extends Activity implements Controller.Listener {
         autoInfo.setTextSize(13);
         root.addView(autoInfo);
 
-        Button off = Ui.button(this, "AUS", v -> ctl.send(Controller.OFF, "app"));
+        Button off = Ui.button(this, "OFF", v -> ctl.send(Controller.OFF, "app"));
         off.setTextSize(20);
         controls.add(off);
         root.addView(Ui.wide(off));
@@ -78,12 +78,12 @@ public class MainActivity extends Activity implements Controller.Listener {
 
     private void showMenu(View anchor) {
         PopupMenu m = new PopupMenu(this, anchor);
-        m.getMenu().add(0, 1, 0, "Knöpfe bearbeiten");
-        m.getMenu().add(0, 2, 1, "Suchlauf");
-        m.getMenu().add(0, 3, 2, "Lauschtest");
-        m.getMenu().add(0, 6, 3, "Lernen (Profil aus anderem Gerät)");
-        m.getMenu().add(0, 4, 4, "Fernsteuerung");
-        m.getMenu().add(0, 5, 5, "Setup (Profile)");
+        m.getMenu().add(0, 1, 0, "Edit buttons");
+        m.getMenu().add(0, 2, 1, "Sweep");
+        m.getMenu().add(0, 3, 2, "Listen test");
+        m.getMenu().add(0, 6, 3, "Learn (profile from another device)");
+        m.getMenu().add(0, 4, 4, "Remote control");
+        m.getMenu().add(0, 5, 5, "Setup (profiles)");
         m.setOnMenuItemClickListener(item -> {
             Class<?> target;
             switch (item.getItemId()) {
@@ -109,7 +109,7 @@ public class MainActivity extends Activity implements Controller.Listener {
         ticker.post(new Runnable() {
             @Override public void run() {
                 long s = ctl.autoOffInSeconds();
-                autoInfo.setText(ctl.isOff() ? "" : "Auto-Aus in " + s + " s");
+                autoInfo.setText(ctl.isOff() ? "" : "Auto-off in " + s + " s");
                 ticker.postDelayed(this, 1000);
             }
         });
@@ -120,8 +120,8 @@ public class MainActivity extends Activity implements Controller.Listener {
         super.onPause();
         ticker.removeCallbacksAndMessages(null);
         ctl.setListener(null);
-        // ohne laufende Fernsteuerung nichts im Hintergrund weitersenden
-        if (!RemoteService.running && !ctl.isOff()) ctl.send(Controller.OFF, "app pausiert");
+        // without a running remote control, do not keep sending in the background
+        if (!RemoteService.running && !ctl.isOff()) ctl.send(Controller.OFF, "app paused");
     }
 
     @Override
@@ -142,7 +142,7 @@ public class MainActivity extends Activity implements Controller.Listener {
         grid.removeAllViews();
         cells.clear();
         Profile p = ctl.profile();
-        profileName.setText(p == null ? "Kein Profil" : p.name);
+        profileName.setText(p == null ? "No profile" : p.name);
         if (p == null) {
             onState(Controller.NO_PROFILE, Controller.OFF);
             return;
@@ -164,7 +164,7 @@ public class MainActivity extends Activity implements Controller.Listener {
             row.addView(v);
             cells.put(b.code, v);
         }
-        if (row != null) {                          // letzte Zeile auffuellen, damit alle Knoepfe gleich breit sind
+        if (row != null) {                          // pad the last row so that all buttons have the same width
             for (int i = p.buttons.size(); i % COLUMNS != 0; i++) {
                 View pad = new View(this);
                 pad.setLayoutParams(new LinearLayout.LayoutParams(0, Ui.dp(this, 88), 1));

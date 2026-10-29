@@ -36,20 +36,20 @@ import java.util.Set;
 import java.util.TreeMap;
 
 /**
- * Lern-Modus: hoert zu, waehrend ein ANDERES Geraet die Original-App bedient, und leitet daraus ein Profil ab.
- * Dieses Handy kann seine eigenen Sendungen nicht hoeren und die Sendungen anderer Apps auf demselben Handy
- * nicht lesen - die Kommandos muessen von einem zweiten Geraet kommen.
+ * Learn mode: listens while ANOTHER device operates the original app and derives a profile from that.
+ * This phone cannot hear its own broadcasts and cannot read the broadcasts of other apps on the same phone,
+ * so the commands have to come from a second device.
  *
- * Ablauf: 1. Grundrauschen messen. 2. Erste Funktion aufnehmen (die Gruppe, in der neue Pakete auftauchen,
- * wird gemerkt: Company-ID, UUIDs, Paketlaenge). 3. Weitere Kommandos aufnehmen, jeweils das haeufigste neue
- * Paket der Gruppe. 4. Profil ableiten (Formel, sonst Paketliste) und im Editor pruefen.
+ * Steps: 1. Measure the background noise. 2. Record the first function (the group in which new packets
+ * show up is remembered: company ID, UUIDs, packet length). 3. Record further commands, each time the most
+ * frequent new packet of that group. 4. Derive the profile (formula, otherwise packet table) and check it in the editor.
  */
 public class LearnActivity extends Activity {
     private static final int BASE_S = 6;
     private static final int FIRST_S = 8;
     private static final int STEP_S = 6;
 
-    /** Pakete einer Sendergruppe: gleiche Company-ID, gleiche Service-UUIDs, gleiche Paketlaenge. */
+    /** Packets of one group of senders: same company ID, same service UUIDs, same packet length. */
     private static final class Group {
         String key;
         int companyId;
@@ -57,17 +57,17 @@ public class LearnActivity extends Activity {
         boolean connectable = true;
         int total;
         int bestRssi = -127;
-        final Map<String, Integer> counts = new HashMap<>();    // Nutzbytes (hex) -> Haeufigkeit
+        final Map<String, Integer> counts = new HashMap<>();    // payload bytes (hex) -> frequency
     }
 
     private final Handler h = new Handler(Looper.getMainLooper());
     private BluetoothLeScanner scanner;
     private ScanCallback callback;
-    private final Set<String> base = new HashSet<>();           // "company:payload" aus dem Grundrauschen
+    private final Set<String> base = new HashSet<>();           // "company:payload" from the background noise
     private Map<String, Group> groups = new HashMap<>();
     private Group chosen;
     private final TreeMap<Integer, byte[]> recorded = new TreeMap<>();
-    private int phase;                                          // 0 = ruht, 1 = Grundrauschen, 2 = erste Funktion, 3 = weiteres
+    private int phase;                                          // 0 = idle, 1 = background noise, 2 = first function, 3 = further
     private int left;
     private boolean baseDone;
 
@@ -90,16 +90,16 @@ public class LearnActivity extends Activity {
         root.setPadding(32, 48, 32, 32);
 
         TextView warn = new TextView(this);
-        warn.setText("Ein ANDERES Gerät muss die Bluetooth-Kommandos senden: bediene die Original-App auf einem "
-                + "zweiten Handy oder Tablet. Dieses Handy hört nur zu, es kann weder seine eigenen Sendungen noch "
-                + "die einer anderen App auf diesem Handy aufnehmen.");
+        warn.setText("ANOTHER device has to send the Bluetooth commands: operate the original app on a "
+                + "second phone or tablet. This phone only listens; it can record neither its own broadcasts nor "
+                + "those of another app on this phone.");
         warn.setTypeface(null, Typeface.BOLD);
         warn.setTextColor(0xFFC62828);
         root.addView(warn);
 
         TextView help = new TextView(this);
-        help.setText("Das sendende Gerät in die Nähe legen (wenige Meter). Die Original-App dort öffnen und das "
-                + "Gerät/Profil wählen. Das Gerät selbst muss nicht dabei sein.");
+        help.setText("Put the sending device close by (a few metres). Open the original app there and choose the "
+                + "device/profile. The device itself does not have to be present.");
         help.setTextSize(13);
         help.setPadding(0, 16, 0, 16);
         root.addView(help);
@@ -108,52 +108,52 @@ public class LearnActivity extends Activity {
         status.setPadding(0, 8, 0, 16);
         root.addView(status);
 
-        baseBtn = Ui.button(this, "1. Umgebung messen (" + BASE_S + " s)", v -> startWindow(1, BASE_S));
+        baseBtn = Ui.button(this, "1. Measure surroundings (" + BASE_S + " s)", v -> startWindow(1, BASE_S));
         root.addView(Ui.wide(baseBtn));
         TextView t1 = new TextView(this);
-        t1.setText("Original-App währenddessen nichts senden lassen.");
+        t1.setText("Do not let the original app send anything meanwhile.");
         t1.setTextSize(12);
         root.addView(t1);
 
-        firstBtn = Ui.button(this, "2. Erste Funktion aufnehmen (" + FIRST_S + " s)", v -> startWindow(2, FIRST_S));
+        firstBtn = Ui.button(this, "2. Record first function (" + FIRST_S + " s)", v -> startWindow(2, FIRST_S));
         firstBtn.setEnabled(false);
         root.addView(Ui.wide(firstBtn));
         TextView t2 = new TextView(this);
-        t2.setText("Nach dem Tippen in der Original-App die Funktion starten und laufen lassen. Der Code unten ist "
-                + "die Nummer, unter der sie gespeichert wird.");
+        t2.setText("After tapping, start the function in the original app and let it run. The code below is "
+                + "the number under which it is stored.");
         t2.setTextSize(12);
         root.addView(t2);
 
         code = new EditText(this);
-        code.setHint("Code hex");
+        code.setHint("Code (hex)");
         code.setInputType(InputType.TYPE_CLASS_TEXT);
         code.setText("01");
         root.addView(code);
 
-        nextBtn = Ui.button(this, "3. Weiteres Kommando aufnehmen (" + STEP_S + " s)", v -> startWindow(3, STEP_S));
+        nextBtn = Ui.button(this, "3. Record another command (" + STEP_S + " s)", v -> startWindow(3, STEP_S));
         nextBtn.setEnabled(false);
         root.addView(Ui.wide(nextBtn));
         TextView t3 = new TextView(this);
-        t3.setText("Code oben eintragen, nach dem Tippen das Kommando in der Original-App auslösen. Die Nummer ist frei wählbar "
-                + "und ändert sich nach jedem Schritt von selbst. Aus hat unten einen eigenen Knopf. Schon aufgenommene Pakete werden übersprungen. "
-                + "Hört man dabei nichts Passendes, oder macht das Gerät später etwas anderes: unten \"Aus sendet kein "
-                + "Paket\" ankreuzen und Code 00 nicht aufnehmen.");
+        t3.setText("Enter the code above, then trigger the command in the original app after tapping. The number is free to choose "
+                + "and changes by itself after each step. Off has its own button below. Packets that are already recorded are skipped. "
+                + "If nothing suitable is heard for off, or the device does something else later: tick \"Off sends no "
+                + "packet\" below and do not record code 00.");
         t3.setTextSize(12);
         root.addView(t3);
 
         silentOff = new CheckBox(this);
-        silentOff.setText("Aus sendet kein Paket (die Original-App hört bei Aus nur auf zu senden)");
+        silentOff.setText("Off sends no packet (the original app just stops sending for off)");
         silentOff.setOnCheckedChangeListener((b, on) -> setButtons(phase == 0));
         root.addView(silentOff);
 
-        offBtn = Ui.button(this, "Aus aufnehmen (Code 00, " + STEP_S + " s)", v -> {
+        offBtn = Ui.button(this, "Record off (code 00, " + STEP_S + " s)", v -> {
             code.setText("00");
             startWindow(3, STEP_S);
         });
         offBtn.setEnabled(false);
         root.addView(Ui.wide(offBtn));
         TextView t4 = new TextView(this);
-        t4.setText("Nach dem Tippen in der Original-App Aus drücken. Aus wird nicht automatisch vorgeschlagen.");
+        t4.setText("After tapping, press off in the original app. Off is never suggested automatically.");
         t4.setTextSize(12);
         root.addView(t4);
 
@@ -165,20 +165,20 @@ public class LearnActivity extends Activity {
         root.addView(recordedView);
 
         name = new EditText(this);
-        name.setHint("Profilname");
-        name.setText("Gelerntes Profil");
+        name.setHint("Profile name");
+        name.setText("Learned profile");
         root.addView(name);
         LinearLayout row = new LinearLayout(this);
-        deriveBtn = Ui.button(this, "4. Profil ableiten", v -> derive());
+        deriveBtn = Ui.button(this, "4. Derive profile", v -> derive());
         deriveBtn.setEnabled(false);
         row.addView(deriveBtn);
-        row.addView(Ui.button(this, "Neu beginnen", v -> reset()));
+        row.addView(Ui.button(this, "Start over", v -> reset()));
         root.addView(row);
 
         ScrollView scroll = new ScrollView(this);
         scroll.addView(root);
         setContentView(scroll);
-        show("Bereit. Schritt 1: Umgebung messen.");
+        show("Ready. Step 1: measure the surroundings.");
     }
 
     @Override
@@ -194,7 +194,7 @@ public class LearnActivity extends Activity {
         status.setText(text);
     }
 
-    // ---------------------------------------------------------------- Scan
+    // ---------------------------------------------------------------- scan
 
     private void startWindow(int newPhase, int seconds) {
         if (phase != 0) return;
@@ -205,7 +205,7 @@ public class LearnActivity extends Activity {
         }
         if (!Ui.hasScan(this)) {
             Ui.requestScan(this);
-            show("Bitte die Berechtigung erlauben (Geräte in der Nähe bzw. Standort) und den Schritt danach nochmal starten.");
+            show("Please allow the permission (nearby devices or location) and start the step again.");
             return;
         }
         if (Ui.locationOff(this)) {
@@ -216,7 +216,7 @@ public class LearnActivity extends Activity {
         if (newPhase == 2 && !parseCode()) return;
         scanner = adapter.getBluetoothLeScanner();
         if (scanner == null) {
-            show("Kein BLE-Scanner verfügbar.");
+            show("No BLE scanner available.");
             return;
         }
         groups = new HashMap<>();
@@ -230,13 +230,13 @@ public class LearnActivity extends Activity {
             }
 
             @Override public void onScanFailed(int errorCode) {
-                abort("Scan fehlgeschlagen, Fehler " + errorCode);
+                abort("Scan failed, error " + errorCode);
             }
         };
         try {
             scanner.startScan(null, new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build(), callback);
         } catch (SecurityException e) {
-            show("Berechtigung fehlt (Geräte in der Nähe).");
+            show("Permission missing (nearby devices).");
             return;
         }
         phase = newPhase;
@@ -249,17 +249,17 @@ public class LearnActivity extends Activity {
     private void tick() {
         h.removeCallbacksAndMessages(null);
         if (!Controller.bluetoothOn(this)) {
-            abort("Bluetooth ist aus.");
+            abort("Bluetooth is off.");
             return;
         }
         if (left <= 0) {
             endWindow();
             return;
         }
-        String what = phase == 1 ? "Umgebung messen, Original-App ruhen lassen"
-                : phase == 2 ? "jetzt in der Original-App die erste Funktion starten"
-                : String.format(Locale.ROOT, "jetzt in der Original-App Kommando für Code %02x auslösen", currentCode());
-        show(String.format(Locale.ROOT, "Noch %d s: %s. (%d Sender-Gruppen gehört)", left, what, groups.size()));
+        String what = phase == 1 ? "measuring the surroundings, keep the original app idle"
+                : phase == 2 ? "now start the first function in the original app"
+                : String.format(Locale.ROOT, "now trigger the command for code %02x in the original app", currentCode());
+        show(String.format(Locale.ROOT, "%d s left: %s. (%d sender groups heard)", left, what, groups.size()));
         left--;
         h.postDelayed(this::tick, 1000);
     }
@@ -269,7 +269,7 @@ public class LearnActivity extends Activity {
         phase = 0;
         h.removeCallbacksAndMessages(null);
         setButtons(true);
-        show("Abgebrochen: " + why);
+        show("Aborted: " + why);
     }
 
     private void stopScan() {
@@ -311,14 +311,14 @@ public class LearnActivity extends Activity {
         }
     }
 
-    /** 0000xxxx-0000-1000-8000-00805f9b34fb -> xxxx, sonst die volle UUID. */
+    /** 0000xxxx-0000-1000-8000-00805f9b34fb -> xxxx, otherwise the full UUID. */
     private static String shortUuid(String u) {
         String s = u.toLowerCase(Locale.ROOT);
         if (s.startsWith("0000") && s.endsWith("-0000-1000-8000-00805f9b34fb")) return s.substring(4, 8);
         return s;
     }
 
-    // ---------------------------------------------------------------- Auswertung
+    // ---------------------------------------------------------------- evaluation
 
     private void endWindow() {
         stopScan();
@@ -329,7 +329,7 @@ public class LearnActivity extends Activity {
         if (finished == 1) {
             baseDone = true;
             setButtons(true);
-            show("Grundrauschen: " + base.size() + " verschiedene Pakete. Jetzt Schritt 2.");
+            show("Background noise: " + base.size() + " different packets. Now step 2.");
         } else if (finished == 2) {
             chooseGroup();
         } else {
@@ -352,38 +352,38 @@ public class LearnActivity extends Activity {
             }
         }
         if (best == null) {
-            show("Nichts Neues gehört. Sendet das andere Gerät, ist es in der Nähe und die Funktion gestartet? "
-                    + "Dann Schritt 2 wiederholen.");
+            show("Nothing new heard. Is the other device sending, is it close by and has the function been started? "
+                    + "Then repeat step 2.");
             return;
         }
         chosen = best;
         String payload = topNew(best);
         recorded.put(currentCode(), Payload.fromHex(payload));
-        show(String.format(Locale.ROOT, "Sender gefunden: Company 0x%04x, UUIDs %s, %d Bytes, %d dBm. Code %02x gespeichert.",
+        show(String.format(Locale.ROOT, "Sender found: company 0x%04x, UUIDs %s, %d bytes, %d dBm. Code %02x stored.",
                 best.companyId, best.uuids, payload.length() / 2, best.bestRssi, currentCode()));
         suggestNext();
     }
 
     private void addToChosen() {
         if (chosen == null) {
-            show("Erst Schritt 2.");
+            show("Step 2 first.");
             return;
         }
         Group g = groups.get(chosen.key);
         String payload = g == null ? null : topNew(g);
         if (payload == null) {
-            show("Kein neues Paket vom gewählten Sender gehört (schon aufgenommene werden übersprungen). Nochmal versuchen.");
+            show("No new packet heard from the chosen sender (packets already recorded are skipped). Try again.");
             return;
         }
         recorded.put(currentCode(), Payload.fromHex(payload));
         Integer heard = g.counts.get(payload);
-        show(String.format(Locale.ROOT, "Code %02x gespeichert (%d mal gehört).%s", currentCode(), heard == null ? 0 : heard,
+        show(String.format(Locale.ROOT, "Code %02x stored (heard %d times).%s", currentCode(), heard == null ? 0 : heard,
                 currentCode() == 0 && !silentOff.isChecked() && heard != null && heard < 3
-                        ? " Achtung: nur selten gehört, vielleicht sendet Aus gar kein Paket (dann \"Aus sendet kein Paket\" ankreuzen und 00 neu beginnen)." : ""));
+                        ? " Note: heard only rarely, off may not send a packet at all (then tick \"Off sends no packet\" and record 00 again)." : ""));
         suggestNext();
     }
 
-    /** Haeufigstes Paket der Gruppe, das nicht schon aufgenommen wurde (und beim ersten Schritt nicht im Grundrauschen war). */
+    /** Most frequent packet of the group that has not been recorded yet (and was not part of the background noise). */
     private String topNew(Group g) {
         String best = null;
         int bestN = 0;
@@ -401,7 +401,7 @@ public class LearnActivity extends Activity {
     }
 
     private void suggestNext() {
-        int[] order = {1, 2, 3, 4, 5, 6, 7, 8, 9};      // Aus (00) nie vorschlagen: dafuer gibt es einen eigenen Knopf
+        int[] order = {1, 2, 3, 4, 5, 6, 7, 8, 9};      // never suggest off (00): it has its own button
         int next = -1;
         for (int c : order) {
             if (!recorded.containsKey(c)) {
@@ -431,7 +431,7 @@ public class LearnActivity extends Activity {
             if (v < 0 || v > 255) throw new NumberFormatException();
             return true;
         } catch (NumberFormatException e) {
-            show("Bitte den Code als Hexwert 00-ff eintragen.");
+            show("Please enter the code as a hex value 00-ff.");
             return false;
         }
     }
@@ -439,11 +439,11 @@ public class LearnActivity extends Activity {
     private void refreshList() {
         StringBuilder s = new StringBuilder();
         if (recorded.isEmpty()) {
-            s.append("Noch nichts aufgenommen.");
+            s.append("Nothing recorded yet.");
         } else {
-            s.append("Aufgenommen:\n");
+            s.append("Recorded:\n");
             for (Map.Entry<Integer, byte[]> e : recorded.entrySet()) {
-                s.append(String.format(Locale.ROOT, "  %02x%s  %s\n", e.getKey(), e.getKey() == 0 ? " (Aus)" : "",
+                s.append(String.format(Locale.ROOT, "  %02x%s  %s\n", e.getKey(), e.getKey() == 0 ? " (off)" : "",
                         Controller.hexSpaced(e.getValue())));
             }
         }
@@ -467,27 +467,27 @@ public class LearnActivity extends Activity {
         baseDone = false;
         code.setText("01");
         refreshList();
-        show("Neu begonnen. Schritt 1: Umgebung messen.");
+        show("Started over. Step 1: measure the surroundings.");
     }
 
-    // ---------------------------------------------------------------- Profil ableiten
+    // ---------------------------------------------------------------- derive the profile
 
     private void derive() {
         boolean silent = silentOff.isChecked();
         if (chosen == null || (!silent && !recorded.containsKey(0))) {
-            show("Aufgenommen werden muss mindestens Aus (Code 00) und eine Funktion, oder \"Aus sendet kein Paket\" ankreuzen.");
+            show("At least off (code 00) and one function must be recorded, or tick \"Off sends no packet\".");
             return;
         }
         TreeMap<Integer, byte[]> usable = new TreeMap<>(recorded);
-        if (silent) usable.remove(0);                           // ein evtl. aufgenommenes 00 war kein echtes Aus-Paket
+        if (silent) usable.remove(0);                           // a recorded 00 was not a real off packet
         if (usable.isEmpty()) {
-            show("Es fehlt mindestens eine Funktion außer 00.");
+            show("At least one function besides 00 is missing.");
             return;
         }
         Learner.Result r = Learner.learn(usable);
         Profile p = new Profile();
-        p.name = name.getText().toString().trim().isEmpty() ? "Gelerntes Profil" : name.getText().toString().trim();
-        p.description = "Gelernt aus Mitschnitt: " + r.how;
+        p.name = name.getText().toString().trim().isEmpty() ? "Learned profile" : name.getText().toString().trim();
+        p.description = "Learned from a capture: " + r.how;
         p.companyId = chosen.companyId;
         p.serviceUuids = new ArrayList<>(chosen.uuids);
         p.connectable = chosen.connectable;
@@ -501,9 +501,9 @@ public class LearnActivity extends Activity {
             startActivity(new Intent(this, ProfileEditorActivity.class)
                     .putExtra(ProfileEditorActivity.EXTRA_JSON, p.toJson())
                     .putExtra(ProfileEditorActivity.EXTRA_NEW, true));
-            show("Profil abgeleitet: " + r.how + ". Im Editor prüfen und speichern.");
+            show("Profile derived: " + r.how + ". Check it in the editor and save.");
         } catch (RuntimeException e) {
-            show("Ableiten fehlgeschlagen: " + e.getMessage());
+            show("Deriving failed: " + e.getMessage());
         }
     }
 }

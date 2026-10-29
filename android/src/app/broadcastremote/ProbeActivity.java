@@ -16,7 +16,7 @@ import android.widget.Toast;
 
 import java.util.Locale;
 
-/** Lauschtest: zeigt, ob das Geraet nach einem gueltigen Kommando etwas zurueckfunkt (siehe Probe). */
+/** Listen test: shows whether the device sends anything back after a valid command (see Probe). */
 public class ProbeActivity extends Activity implements Controller.Listener {
     private Controller ctl;
     private Probe probe;
@@ -36,9 +36,9 @@ public class ProbeActivity extends Activity implements Controller.Listener {
         root.setPadding(32, 48, 32, 32);
 
         TextView help = new TextView(this);
-        help.setText("Misst " + Probe.BASE_S + " s das Funkumfeld (Gerät an, aber ohne Funktion), sendet dann "
-                + Probe.TEST_S + " s lang den Code unten und scannt dabei. Gezeigt wird, was neu auftaucht und ob "
-                + "sich jemand mit dem Handy verbinden will. Das Gerät läuft währenddessen.");
+        help.setText("First measures the radio environment for " + Probe.BASE_S + " s (device on, but without a function), then sends "
+                + "the code below for " + Probe.TEST_S + " s while scanning. It shows what newly shows up and whether "
+                + "anyone tries to connect to the phone. The device will be running meanwhile.");
         help.setTextSize(13);
         root.addView(help);
 
@@ -57,11 +57,11 @@ public class ProbeActivity extends Activity implements Controller.Listener {
         root.addView(code);
 
         LinearLayout row = new LinearLayout(this);
-        start = Ui.button(this, "LAUSCHTEST", v -> startProbe());
+        start = Ui.button(this, "LISTEN TEST", v -> startProbe());
         row.addView(start);
-        row.addView(Ui.button(this, "STOPP", v -> {
+        row.addView(Ui.button(this, "STOP", v -> {
             probe.cancel();
-            ctl.send(Controller.OFF, "lauschtest");
+            ctl.send(Controller.OFF, "listen test");
         }));
         root.addView(row);
 
@@ -80,7 +80,7 @@ public class ProbeActivity extends Activity implements Controller.Listener {
     private void startProbe() {
         if (!Ui.hasScan(this)) {
             Ui.requestScan(this);
-            Toast.makeText(this, "Bitte die Berechtigung erlauben (Geräte in der Nähe bzw. Standort) und den Lauschtest danach nochmal starten.",
+            Toast.makeText(this, "Please allow the permission (nearby devices or location) and start the listen test again.",
                     Toast.LENGTH_LONG).show();
             return;
         }
@@ -93,7 +93,7 @@ public class ProbeActivity extends Activity implements Controller.Listener {
             c = Integer.parseInt(code.getText().toString().trim().replaceFirst("^0[xX]", ""), 16);
             if (c < 0 || c > 255) throw new NumberFormatException();
         } catch (NumberFormatException e) {
-            info.setText("Ungültiges Datenbyte, bitte hex 00-ff.");
+            info.setText("Invalid data byte, please enter hex 00-ff.");
             return;
         }
         String err = probe.start(c, (text, running) -> {
@@ -116,7 +116,7 @@ public class ProbeActivity extends Activity implements Controller.Listener {
         super.onPause();
         probe.cancel();
         ctl.setListener(null);
-        if (!RemoteService.running && !ctl.isOff()) ctl.send(Controller.OFF, "lauschtest pausiert");
+        if (!RemoteService.running && !ctl.isOff()) ctl.send(Controller.OFF, "listen test paused");
     }
 
     @Override

@@ -3,7 +3,7 @@
 The app contains a small HTTPS server that speaks the [Model Context Protocol](https://modelcontextprotocol.io)
 (MCP, JSON-RPC 2.0, "Streamable HTTP" with JSON replies only). An AI assistant or any script on your network can
 then press the buttons of the active profile. It is **off by default** and has to be switched on in the app each
-time (*Menü → Fernsteuerung*).
+time (*Menu → Remote control*).
 
 ```
 AI assistant / MCP client ──stdio──► bridge (pc/broadcast_remote_bridge.py)
@@ -19,14 +19,13 @@ AI assistant / MCP client ──stdio──► bridge (pc/broadcast_remote_bridg
 
 | Tool | Parameters | Result (text) |
 |---|---|---|
-| `status` | none | `Profil ZASJ047: aus` or `Profil ZASJ047: aktiv: Code 0x05, Auto-Aus in 120 s`; says if Bluetooth is off (then all send commands are refused) |
+| `status` | none | `Profile ZASJ047: off` or `Profile ZASJ047: active: code 0x05, auto-off in 120 s`; says if Bluetooth is off (then all send commands are refused) |
 | `buttons` | none | JSON list of the buttons of the active profile, in the order of the app |
 | `send` | `code` (integer 0-255, or text such as `"0x11"`) | what was sent, for example `Code 0x05  ->  6d b6 43 ce 97 fe 42 7c e0 b8 2a  [mcp]`; repeated every second until another command or `off` |
-| `off` | none | `AUS ...`: sends the profile's off code for a short time, then stops advertising (or just stops, for a profile with a silent off) |
+| `off` | none | `OFF ...`: sends the profile's off code for a short time, then stops advertising (or just stops, for a profile with a silent off) |
 
-Server instructions given to the client: *"Steuert ein BLE-Broadcast-Gerät über ein Profil. Vor Beginn status
-aufrufen; am Ende immer off senden."* (controls a BLE broadcast device through a profile; call `status` first and
-always finish with `off`). Tool descriptions and messages are currently in German.
+Server instructions given to the client: *"Controls a BLE broadcast device through a profile. Call status first;
+always finish with off."*
 
 ### How buttons are addressed
 
@@ -39,7 +38,7 @@ hex, plus the label if the profile defines one:
 
 The label is optional and only there for humans and assistants; it is not an address. A profile does not know what
 a function *does* (the receive-only device never says), so if you want an assistant to pick functions by meaning,
-give the buttons labels (app: *Menü → Knöpfe bearbeiten*, or `label` in the profile JSON).
+give the buttons labels (app: *Menu → Edit buttons*, or `label` in the profile JSON).
 
 ### Safety behaviour
 
@@ -51,11 +50,11 @@ give the buttons labels (app: *Menü → Knöpfe bearbeiten*, or `label` in the 
 
 ## Setting it up
 
-1. App: *Menü → Fernsteuerung*, switch on. The screen shows the address (`https://<phone-ip>:<port>/mcp`, default
+1. App: *Menu → Remote control*, switch on. The screen shows the address (`https://<phone-ip>:<port>/mcp`, default
    port 8443) and the **access token**. A foreground notification is shown while the server runs.
 2. The app creates a self-signed certificate and writes it to
    `/sdcard/Android/data/app.broadcastremote/files/broadcast-remote-cert.pem`. Get it to the PC, for example
-   `adb pull` that file to `~/.broadcast-remote/cert.pem`, or use *Zertifikat (PEM) kopieren* and paste.
+   `adb pull` that file to `~/.broadcast-remote/cert.pem`, or use *Copy certificate (PEM)* and paste.
    Get it again if the phone's IP address changes (the certificate is made for the addresses of the phone).
 3. Set the environment variables (the token is deliberately not part of any config file):
    - `BROADCAST_REMOTE_TOKEN`: the token shown in the app
@@ -64,7 +63,7 @@ give the buttons labels (app: *Menü → Knöpfe bearbeiten*, or `label` in the 
 4. Register the bridge as a stdio MCP server, see [.mcp.json.example](../.mcp.json.example). In Claude Code:
    `claude mcp add broadcast-remote -- python /path/to/pc/broadcast_remote_bridge.py` (with the variables set).
 
-*Menü → Fernsteuerung → Neues Token* replaces the token; update `BROADCAST_REMOTE_TOKEN` afterwards.
+*Menu → Remote control → New token* replaces the token; update `BROADCAST_REMOTE_TOKEN` afterwards.
 
 ## What the bridge is for
 
@@ -101,8 +100,8 @@ curl --cacert cert.pem -H "Authorization: Bearer $BROADCAST_REMOTE_TOKEN" -H "Co
 
 | Symptom | Likely cause |
 |---|---|
-| bridge: "Handy nicht erreichbar oder Fernsteuerung aus" | remote control not switched on, phone asleep/other network, wrong URL, certificate no longer matches the phone's IP |
-| bridge: `HTTP 401 (Token falsch?)` | `BROADCAST_REMOTE_TOKEN` differs from the one in the app (for example after *Neues Token*) |
+| bridge: "Phone not reachable or remote control off" | remote control not switched on, phone asleep/other network, wrong URL, certificate no longer matches the phone's IP |
+| bridge: `HTTP 401 (wrong token?)` | `BROADCAST_REMOTE_TOKEN` differs from the one in the app (for example after *New token*) |
 | app: server cannot start, port in use | another app (or an older version) holds the port; change the port in the remote control screen |
-| `send` returns "Bluetooth ist aus ..." | switch Bluetooth on at the phone |
+| `send` returns "Error: Bluetooth is off ..." | switch Bluetooth on at the phone |
 | the device does nothing | wrong profile active, or wrong code; try the buttons in the app first |

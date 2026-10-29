@@ -14,13 +14,13 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * Geraeteprofil: wie gesendet wird (Advertising), wie das Paket berechnet wird (Payload) und welche Knoepfe
- * es gibt. Wird als JSON gelesen und geschrieben, siehe docs/PROFILE_FORMAT.md.
+ * Device profile: how to send (advertising), how the packet is computed (payload) and which buttons exist.
+ * Read and written as JSON, see docs/PROFILE_FORMAT.md.
  */
 final class Profile {
     static final class Btn {
         int code;
-        String label;       // leer = Hexcode anzeigen
+        String label;       // empty = show the hex code
         String icon;
 
         Btn(int code, String label, String icon) {
@@ -49,7 +49,7 @@ final class Profile {
     int repeatMs = 1000;
     Payload payload;
     int offCode = 0;
-    /** Aus sendet kein Paket, die Sendung wird nur gestoppt (Geraet schaltet von selbst ab). */
+    /** Off sends no packet, advertising is just stopped (the device switches off by itself). */
     boolean offSilent = false;
     int offSendMs = 2000;
     int autoOffSeconds = 180;
@@ -69,7 +69,7 @@ final class Profile {
         return out;
     }
 
-    /** Wirft IllegalArgumentException, wenn das Profil das Paket nicht liefern kann. */
+    /** Throws IllegalArgumentException if the profile cannot provide the packet. */
     byte[] packet(int code) {
         return payload.packet(code);
     }
@@ -79,32 +79,32 @@ final class Profile {
         return false;
     }
 
-    // ---------------------------------------------------------------- JSON lesen
+    // ---------------------------------------------------------------- read JSON
 
     static Profile parse(String text) {
         try {
             return parseObject(new JSONObject(text.replaceFirst("^\\uFEFF", "")));
         } catch (JSONException e) {
-            throw new IllegalArgumentException("Kein gültiges JSON: " + e.getMessage());
+            throw new IllegalArgumentException("Not valid JSON: " + e.getMessage());
         }
     }
 
     private static Profile parseObject(JSONObject o) throws JSONException {
         Profile p = new Profile();
-        if (o.optInt("format", FORMAT) != FORMAT) throw new IllegalArgumentException("Unbekanntes Profilformat");
+        if (o.optInt("format", FORMAT) != FORMAT) throw new IllegalArgumentException("Unknown profile format");
         p.name = o.optString("name", "").trim();
-        if (p.name.isEmpty()) throw new IllegalArgumentException("\"name\" fehlt");
+        if (p.name.isEmpty()) throw new IllegalArgumentException("\"name\" is missing");
         p.description = o.optString("description", "");
 
         JSONObject adv = o.optJSONObject("advertising");
-        if (adv == null) throw new IllegalArgumentException("\"advertising\" fehlt");
+        if (adv == null) throw new IllegalArgumentException("\"advertising\" is missing");
         p.companyId = adv.optInt("companyId", -1);
-        if (p.companyId < 0 || p.companyId > 0xffff) throw new IllegalArgumentException("advertising.companyId muss 0-65535 sein");
+        if (p.companyId < 0 || p.companyId > 0xffff) throw new IllegalArgumentException("advertising.companyId must be 0-65535");
         JSONArray uu = adv.optJSONArray("serviceUuids");
         if (uu != null) {
             for (int i = 0; i < uu.length(); i++) {
                 String u = uu.getString(i).trim();
-                fullUuid(u);                                    // prueft das Format
+                fullUuid(u);                                    // checks the format
                 p.serviceUuids.add(u);
             }
         }
@@ -115,7 +115,7 @@ final class Profile {
         p.repeatMs = range(adv.optInt("repeatMs", 1000), 100, 60000, "advertising.repeatMs");
 
         JSONObject pl = o.optJSONObject("payload");
-        if (pl == null) throw new IllegalArgumentException("\"payload\" fehlt");
+        if (pl == null) throw new IllegalArgumentException("\"payload\" is missing");
         p.payload = parsePayload(pl);
 
         JSONObject off = o.optJSONObject("off");
@@ -131,12 +131,12 @@ final class Profile {
             for (int i = 0; i < bs.length(); i++) {
                 JSONObject b = bs.getJSONObject(i);
                 int c = code(b.opt("code"), "buttons[" + i + "].code");
-                if (p.hasButton(c)) throw new IllegalArgumentException("Knopf doppelt: " + String.format("%02x", c));
+                if (p.hasButton(c)) throw new IllegalArgumentException("Duplicate button: " + String.format("%02x", c));
                 p.buttons.add(new Btn(c, b.optString("label", ""), b.optString("icon", "")));
             }
         }
 
-        // Legacy-Advertising hat 31 Bytes: Flags 3 + Herstellerdaten (4 + n) + UUID-Liste (2 + 2 je 16-Bit-UUID)
+        // Legacy advertising has 31 bytes: flags 3 + manufacturer data (4 + n) + UUID list (2 + 2 per 16-bit UUID)
         int size = (p.connectable ? 3 : 0) + 4 + maxPacketLength(p.payload);
         int uuid16 = 0;
         int uuid128 = 0;
@@ -146,7 +146,7 @@ final class Profile {
         }
         if (uuid16 > 0) size += 2 + 2 * uuid16;
         if (uuid128 > 0) size += 2 + 16 * uuid128;
-        if (size > 31) throw new IllegalArgumentException("Paket zu lang für Legacy-Advertising (" + size + " von 31 Bytes)");
+        if (size > 31) throw new IllegalArgumentException("Packet too long for legacy advertising (" + size + " of 31 bytes)");
         return p;
     }
 
@@ -161,18 +161,18 @@ final class Profile {
         String type = pl.optString("type", "template");
         if (type.equals("table")) {
             JSONObject packets = pl.optJSONObject("packets");
-            if (packets == null || packets.length() == 0) throw new IllegalArgumentException("payload.packets fehlt");
+            if (packets == null || packets.length() == 0) throw new IllegalArgumentException("payload.packets is missing");
             Map<Integer, byte[]> table = new TreeMap<>();
             Iterator<String> keys = packets.keys();
             while (keys.hasNext()) {
                 String k = keys.next();
                 byte[] bytes = hex(packets.getString(k), "payload.packets." + k);
-                if (bytes.length == 0 || bytes.length > 24) throw new IllegalArgumentException("payload.packets." + k + ": Länge 1-24 Bytes");
+                if (bytes.length == 0 || bytes.length > 24) throw new IllegalArgumentException("payload.packets." + k + ": length must be 1-24 bytes");
                 table.put(code(k, "payload.packets." + k), bytes);
             }
             return Payload.table(table);
         }
-        if (!type.equals("template")) throw new IllegalArgumentException("payload.type muss template oder table sein");
+        if (!type.equals("template")) throw new IllegalArgumentException("payload.type must be template or table");
         byte[] prefix = hex(pl.optString("prefix", ""), "payload.prefix");
         int xor = pl.has("xor") ? code(pl.get("xor"), "payload.xor") : 0;
         Payload.Crc crc = null;
@@ -185,7 +185,7 @@ final class Profile {
         return Payload.template(prefix, xor, crc);
     }
 
-    // ---------------------------------------------------------------- JSON schreiben
+    // ---------------------------------------------------------------- write JSON
 
     String toJson() {
         try {
@@ -245,15 +245,15 @@ final class Profile {
         }
     }
 
-    // ---------------------------------------------------------------- Hilfen
+    // ---------------------------------------------------------------- helpers
 
-    /** 16-Bit-, 32-Bit- oder volle UUID -> volle UUID mit Bluetooth-Basis. */
+    /** 16-bit, 32-bit or full UUID -> full UUID with the Bluetooth base. */
     static String fullUuid(String u) {
         String s = u.trim().toLowerCase(Locale.ROOT);
         if (s.matches("[0-9a-f]{4}")) return "0000" + s + "-0000-1000-8000-00805f9b34fb";
         if (s.matches("[0-9a-f]{8}")) return s + "-0000-1000-8000-00805f9b34fb";
         if (s.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")) return s;
-        throw new IllegalArgumentException("Ungültige UUID: " + u);
+        throw new IllegalArgumentException("Invalid UUID: " + u);
     }
 
     private static int indexOf(String[] values, String v) {
@@ -263,24 +263,24 @@ final class Profile {
 
     private static String oneOf(String v, String[] allowed, String field) {
         for (String a : allowed) if (a.equals(v)) return v;
-        throw new IllegalArgumentException(field + " muss einer von " + String.join(", ", allowed) + " sein");
+        throw new IllegalArgumentException(field + " must be one of " + String.join(", ", allowed));
     }
 
     private static int range(int v, int lo, int hi, String field) {
-        if (v < lo || v > hi) throw new IllegalArgumentException(field + " muss " + lo + "-" + hi + " sein");
+        if (v < lo || v > hi) throw new IllegalArgumentException(field + " must be " + lo + "-" + hi);
         return v;
     }
 
-    /** Hexstring ("0b") oder Zahl -> 0-255. */
+    /** Hex string ("0b") or number -> 0-255. */
     private static int code(Object v, String field) {
         int n = number(v, field);
-        if (n < 0 || n > 255) throw new IllegalArgumentException(field + " muss 00-ff sein");
+        if (n < 0 || n > 255) throw new IllegalArgumentException(field + " must be 00-ff");
         return n;
     }
 
     private static int code16(Object v, String field) {
         int n = number(v, field);
-        if (n < 0 || n > 0xffff) throw new IllegalArgumentException(field + " muss 0000-ffff sein");
+        if (n < 0 || n > 0xffff) throw new IllegalArgumentException(field + " must be 0000-ffff");
         return n;
     }
 
@@ -292,7 +292,7 @@ final class Profile {
             } catch (NumberFormatException ignored) {
             }
         }
-        throw new IllegalArgumentException(field + " fehlt oder ist keine Hexzahl");
+        throw new IllegalArgumentException(field + " is missing or not a hex number");
     }
 
     private static byte[] hex(String v, String field) {

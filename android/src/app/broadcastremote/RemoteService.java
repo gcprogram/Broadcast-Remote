@@ -13,7 +13,7 @@ import android.os.IBinder;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-/** Vordergrunddienst: haelt den HTTPS/MCP-Server am Laufen. Nur auf ausdruecklichen Start in der App. */
+/** Foreground service: keeps the HTTPS/MCP server running. Only started explicitly in the app. */
 public class RemoteService extends Service {
     static final String ACTION_STOP = "app.broadcastremote.STOP";
     private static final String CHANNEL = "remote";
@@ -38,7 +38,7 @@ public class RemoteService extends Service {
         if (running) return START_NOT_STICKY;
         error = "";
         try {
-            startInForeground("Server startet ...");        // Pflicht kurz nach startForegroundService
+            startInForeground("Server starting ...");        // required shortly after startForegroundService
             identity = Tls.prepare(this);
             int port = Config.port(this);
             String host = "localhost";
@@ -80,16 +80,16 @@ public class RemoteService extends Service {
 
     private void startInForeground(String url) {
         NotificationManager nm = getSystemService(NotificationManager.class);
-        nm.createNotificationChannel(new NotificationChannel(CHANNEL, "Fernsteuerung",
+        nm.createNotificationChannel(new NotificationChannel(CHANNEL, "Remote control",
                 NotificationManager.IMPORTANCE_LOW));
         Intent stop = new Intent(this, RemoteService.class).setAction(ACTION_STOP);
         PendingIntent pi = PendingIntent.getService(this, 0, stop, PendingIntent.FLAG_IMMUTABLE);
         Notification n = new Notification.Builder(this, CHANNEL)
                 .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
-                .setContentTitle("Broadcast Remote: Fernsteuerung aktiv")
+                .setContentTitle("Broadcast Remote: remote control active")
                 .setContentText(url)
                 .setOngoing(true)
-                .addAction(new Notification.Action.Builder(null, "Beenden", pi).build())
+                .addAction(new Notification.Action.Builder(null, "Stop", pi).build())
                 .build();
         if (Build.VERSION.SDK_INT >= 29) {
             startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE);
@@ -103,7 +103,7 @@ public class RemoteService extends Service {
         if (server != null) server.stop();
         server = null;
         running = false;
-        Controller.get(this).send(Controller.OFF, "Fernsteuerung beendet");
+        Controller.get(this).send(Controller.OFF, "remote control stopped");
         super.onDestroy();
     }
 }

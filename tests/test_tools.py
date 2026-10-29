@@ -40,7 +40,7 @@ class LearnTests(unittest.TestCase):
         self.assertEqual(pl["prefix"], PREFIX)
         self.assertEqual(pl["xor"], "e5")
         self.assertEqual(pl["crc"], {"poly": "8408", "init": "0000", "reflected": True, "swap": True, "xorOut": "157d"})
-        # der abgeleitete Code berechnet auch Codes, die nicht im Mitschnitt waren
+        # the derived profile also computes codes that were not in the capture
         original = bp.load_profile(PROFILE)
         for code in (0x0B, 0x18, 0x38, 0xFF):
             self.assertEqual(bp.packet(prof, code), bp.packet(original, code))
@@ -58,7 +58,7 @@ class LearnTests(unittest.TestCase):
             bp.packet(prof, 5)
 
     def test_non_reflected_crc_is_standard_ccitt(self):
-        # CRC-16/XMODEM ueber das Byte 0x31 (Kontrollwert aus der Literatur: 0x2672 fuer "1")
+        # CRC-16/XMODEM over the byte 0x31 (check value from the literature: 0x2672 for "1")
         self.assertEqual(bp.crc16(0x31, 0x1021, 0, reflected=False), 0x2672)
 
 

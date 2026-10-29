@@ -6,9 +6,9 @@ import java.util.Set;
 import java.util.TreeMap;
 
 /**
- * Leitet aus aufgenommenen Paaren (Code, Paket) ein Payload-Modell ab, gleiche Logik wie tools/profile_tool.py:
- * erst prefix + (code ^ xor), dann prefix + (code ^ xor) + CRC-16 mit gaengigen Polynomen, sonst eine Tabelle.
- * Reines Java, am PC testbar (tests/PayloadCheck.java).
+ * Derives a payload model from recorded pairs (code, packet), same logic as tools/profile_tool.py:
+ * first prefix + (code ^ xor), then prefix + (code ^ xor) + CRC-16 with common polynomials, otherwise a table.
+ * Plain Java, testable on a PC (tests/PayloadCheck.java).
  */
 final class Learner {
     static final class Result {
@@ -31,18 +31,18 @@ final class Learner {
         Set<Integer> lengths = new HashSet<>();
         for (byte[] p : capture.values()) lengths.add(p.length);
         if (lengths.size() != 1 || capture.size() < 3) {
-            return new Result(Payload.table(table), "Paketliste (zu wenige oder unterschiedlich lange Pakete, mindestens 3 Codes nötig)");
+            return new Result(Payload.table(table), "packet table (too few packets or packets of different length, at least 3 codes needed)");
         }
         int n = lengths.iterator().next();
 
-        // ohne CRC: prefix + (code ^ xor)
+        // without CRC: prefix + (code ^ xor)
         byte[] prefix = prefixOf(capture, n - 1);
         Integer xor = xorOf(capture, n - 1);
         if (prefix != null && xor != null) {
-            return new Result(Payload.template(prefix, xor, null), "Formel ohne Prüfsumme");
+            return new Result(Payload.template(prefix, xor, null), "formula without checksum");
         }
 
-        // mit CRC: prefix + (code ^ xor) + crc16
+        // with CRC: prefix + (code ^ xor) + crc16
         if (n >= 3) {
             prefix = prefixOf(capture, n - 3);
             xor = xorOf(capture, n - 3);
@@ -66,7 +66,7 @@ final class Learner {
                                 }
                                 if (fits && xorOut != null) {
                                     return new Result(Payload.template(prefix, xor, new Payload.Crc(poly, init, reflected, swap, xorOut)),
-                                            "Formel mit CRC-16 (passt zu allen " + capture.size() + " Paketen)");
+                                            "formula with CRC-16 (fits all " + capture.size() + " packets)");
                                 }
                             }
                         }
@@ -74,10 +74,10 @@ final class Learner {
                 }
             }
         }
-        return new Result(Payload.table(table), "Paketliste (keine bekannte Formel passt)");
+        return new Result(Payload.table(table), "packet table (no known formula fits)");
     }
 
-    /** Gemeinsamer Anfang der ersten len Bytes aller Pakete, sonst null. */
+    /** Common start of the first len bytes of all packets, otherwise null. */
     private static byte[] prefixOf(Map<Integer, byte[]> capture, int len) {
         byte[] first = null;
         for (byte[] p : capture.values()) {
@@ -90,7 +90,7 @@ final class Learner {
         return first;
     }
 
-    /** Das Byte an Position pos ist code ^ xor mit festem xor, sonst null. */
+    /** The byte at position pos is code ^ xor with a fixed xor, otherwise null. */
     private static Integer xorOf(Map<Integer, byte[]> capture, int pos) {
         Integer xor = null;
         for (Map.Entry<Integer, byte[]> e : capture.entrySet()) {

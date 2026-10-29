@@ -1,18 +1,18 @@
-"""Liest die Advertising-Pakete, die eine Android-App gesendet hat, aus einem Bugreport.
+"""Reads the advertising packets that an Android app has sent from a bugreport.
 
-Android haelt im Bugreport eine Zusammenfassung des Bluetooth-HCI-Logs (BTSNOOP_LOG_SUMMARY). Darin stehen
-die HCI-Kommandos "LE Set (Extended) Advertising Data" mit den Paketen, die die Original-App der Fernbedienung
-gesendet hat. Ohne Root, ohne Spezial-Hardware.
+Android keeps a summary of the Bluetooth HCI log in the bugreport (BTSNOOP_LOG_SUMMARY). It contains the HCI
+commands "LE Set (Extended) Advertising Data" with the packets that the original remote app has sent.
+No root, no special hardware.
 
-Ablauf:
-  1. Original-App oeffnen, Geraet/Profil waehlen, nacheinander jede Funktion kurz druecken, dazwischen Aus.
-  2. Sofort danach:   adb bugreport bugreport.zip
+Steps:
+  1. Open the original app, choose the device/profile, press each function briefly one after the other, with off in between.
+  2. Right afterwards:   adb bugreport bugreport.zip
   3. python hci_adv_extract.py bugreport.zip
-Das Geraet muss nicht anwesend sein: die App sendet auch ohne Empfaenger.
+The device does not have to be present: the app sends even without a receiver.
 
-Die Ausgabe zeigt je Sendevorgang die Herstellerdaten (Company-ID + Nutzbytes) in der Reihenfolge, in der die
-App sie gesendet hat. Ordne sie deinen Tastendruecken zu und schreibe sie als "code paket"-Zeilen in eine
-Mitschnitt-Datei fuer profile_tool.py.
+For every transmission the output shows the manufacturer data (company ID + payload bytes) in the order in which
+the app sent them. Match them to your key presses and write them as "code packet" lines into a capture file
+for profile_tool.py.
 """
 import base64
 import collections
@@ -35,7 +35,7 @@ def read_text(path):
                     text = z.read(name).decode("utf-8", "replace")
                     if MARKER_BEGIN in text:
                         return text
-        raise SystemExit("Im Bugreport steht kein BTSNOOP_LOG_SUMMARY (Bluetooth-Log leer?).")
+        raise SystemExit("The bugreport contains no BTSNOOP_LOG_SUMMARY (Bluetooth log empty?).")
     with open(path, encoding="utf-8", errors="replace") as f:
         return f.read()
 
@@ -94,7 +94,7 @@ def main():
             continue
         key = (mfg[0], mfg[1])
         counts[key] += 1
-        if key != last:                                     # Wiederholungen derselben Nutzbytes nur einmal zeigen
+        if key != last:                                     # show repetitions of the same payload only once
             print("%9.2f  0x%04x   %-27s  %s" % (t / 1000, mfg[0], mfg[1].hex(" "), " ".join(others)))
             last = key
     print("\nHaeufigkeit je Nutzbytes (Wiederholungen alle ~1 s):")

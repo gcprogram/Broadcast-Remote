@@ -19,8 +19,8 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Suchlauf: sendet jeden Code des gewaehlten Bereichs kurz (2,5 s, danach 1 s Aus). Was am Geraet reagiert,
- * merkt man mit MERKEN: der Code wird sofort als Knopf im aktiven Profil angelegt.
+ * Sweep: briefly sends every code of the chosen range (2.5 s, then 1 s off). Whatever the device reacts to
+ * is kept with REMEMBER: the code immediately becomes a button of the active profile.
  */
 public class SweepActivity extends Activity implements Controller.Listener {
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -46,9 +46,9 @@ public class SweepActivity extends Activity implements Controller.Listener {
         root.setPadding(32, 48, 32, 32);
 
         TextView help = new TextView(this);
-        help.setText("Sendet die Codes des Bereichs nacheinander, je 2,5 s, dann 1 s Aus. Reagiert das Gerät, "
-                + "tippe MERKEN: der Code wird als Knopf im aktiven Profil angelegt. Das Gerät muss in "
-                + "Reichweite sein und läuft währenddessen.");
+        help.setText("Sends the codes of the range one after the other, 2.5 s each, then 1 s off. If the device reacts, "
+                + "tap REMEMBER: the code is added as a button of the active profile. The device has to be in "
+                + "range and will be running meanwhile.");
         help.setTextSize(13);
         root.addView(help);
 
@@ -57,18 +57,18 @@ public class SweepActivity extends Activity implements Controller.Listener {
         root.addView(status);
 
         TextView t1 = new TextView(this);
-        t1.setText("Einzelnen Code senden (hex)");
+        t1.setText("Send a single code (hex)");
         t1.setTypeface(null, Typeface.BOLD);
         root.addView(t1);
         LinearLayout one = new LinearLayout(this);
         one.setGravity(Gravity.CENTER_VERTICAL);
-        manual = hexField("z. B. 1a");
+        manual = hexField("e.g. 1a");
         one.addView(manual, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-        Button send = Ui.button(this, "Senden", v -> {
+        Button send = Ui.button(this, "Send", v -> {
             Integer c = parse(manual);
-            if (c != null) ctl.send(c, "suchlauf");
+            if (c != null) ctl.send(c, "sweep");
         });
-        Button off = Ui.button(this, "AUS", v -> ctl.send(Controller.OFF, "suchlauf"));
+        Button off = Ui.button(this, "OFF", v -> ctl.send(Controller.OFF, "sweep"));
         controls.add(send);
         controls.add(off);
         one.addView(send);
@@ -76,15 +76,15 @@ public class SweepActivity extends Activity implements Controller.Listener {
         root.addView(one);
 
         TextView t2 = new TextView(this);
-        t2.setText("Suchlauf (hex)");
+        t2.setText("Sweep (hex)");
         t2.setTypeface(null, Typeface.BOLD);
         t2.setPadding(0, 32, 0, 0);
         root.addView(t2);
         LinearLayout range = new LinearLayout(this);
         range.setGravity(Gravity.CENTER_VERTICAL);
-        from = hexField("von");
+        from = hexField("from");
         from.setText("00");
-        to = hexField("bis");
+        to = hexField("to");
         to.setText("ff");
         range.addView(from, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
         range.addView(to, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
@@ -97,18 +97,18 @@ public class SweepActivity extends Activity implements Controller.Listener {
         root.addView(sweepInfo);
 
         LinearLayout row = new LinearLayout(this);
-        Button start = Ui.button(this, "SUCHLAUF", v -> startSweep());
+        Button start = Ui.button(this, "SWEEP", v -> startSweep());
         controls.add(start);
         row.addView(start);
-        row.addView(Ui.button(this, "STOPP", v -> {
+        row.addView(Ui.button(this, "STOP", v -> {
             stopSweep();
-            ctl.send(Controller.OFF, "suchlauf");
+            ctl.send(Controller.OFF, "sweep");
         }));
         root.addView(row);
         LinearLayout step = new LinearLayout(this);
-        step.addView(Ui.button(this, "< ZURÜCK", v -> jump(-1)));
-        step.addView(Ui.button(this, "MERKEN", v -> remember()));
-        step.addView(Ui.button(this, "WEITER >", v -> jump(1)));
+        step.addView(Ui.button(this, "< BACK", v -> jump(-1)));
+        step.addView(Ui.button(this, "REMEMBER", v -> remember()));
+        step.addView(Ui.button(this, "NEXT >", v -> jump(1)));
         root.addView(step);
 
         found = new TextView(this);
@@ -134,7 +134,7 @@ public class SweepActivity extends Activity implements Controller.Listener {
             if (v < 0 || v > 255) throw new NumberFormatException();
             return v;
         } catch (NumberFormatException e) {
-            status.setText("Bitte einen Hexwert 00-ff eingeben.");
+            status.setText("Please enter a hex value 00-ff.");
             return null;
         }
     }
@@ -151,7 +151,7 @@ public class SweepActivity extends Activity implements Controller.Listener {
         super.onPause();
         stopSweep();
         ctl.setListener(null);
-        if (!RemoteService.running && !ctl.isOff()) ctl.send(Controller.OFF, "suchlauf pausiert");
+        if (!RemoteService.running && !ctl.isOff()) ctl.send(Controller.OFF, "sweep paused");
     }
 
     @Override
@@ -168,7 +168,7 @@ public class SweepActivity extends Activity implements Controller.Listener {
         Integer b = parse(to);
         if (a == null || b == null) return;
         if (a > b) {
-            status.setText("\"von\" muss kleiner als \"bis\" sein.");
+            status.setText("\"from\" must not be greater than \"to\".");
             return;
         }
         sweeping = true;
@@ -184,14 +184,14 @@ public class SweepActivity extends Activity implements Controller.Listener {
         if (value < 0) value = 0;
         if (value > last) {
             stopSweep();
-            ctl.send(Controller.OFF, "suchlauf");
-            sweepInfo.setText("Suchlauf zu Ende");
+            ctl.send(Controller.OFF, "sweep");
+            sweepInfo.setText("Sweep finished");
             return;
         }
         final int v = value;
         sweepInfo.setText(String.format(Locale.ROOT, "0x%02x  (%d)", v, v));
-        String r = ctl.send(v, "suchlauf");
-        if (r.startsWith("Fehler")) {                // z. B. Tabellenprofil ohne diesen Code: weiter zum naechsten
+        String r = ctl.send(v, "sweep");
+        if (r.startsWith("Error")) {                // e.g. a table profile without this code: go on to the next one
             handler.postDelayed(() -> {
                 value = v + 1;
                 step();
@@ -199,7 +199,7 @@ public class SweepActivity extends Activity implements Controller.Listener {
             return;
         }
         handler.postDelayed(() -> {
-            ctl.send(Controller.OFF, "suchlauf");
+            ctl.send(Controller.OFF, "sweep");
             handler.postDelayed(() -> {
                 value = v + 1;
                 step();
@@ -219,13 +219,13 @@ public class SweepActivity extends Activity implements Controller.Listener {
         if (p == null) return;
         String hex = String.format(Locale.ROOT, "%02x", value);
         if (p.hasButton(value)) {
-            foundList.append(hex).append(" (schon vorhanden)  ");
+            foundList.append(hex).append(" (already exists)  ");
         } else {
             p.buttons.add(new Profile.Btn(value, "", ""));
             ProfileStore.saveActive(this, p);
-            foundList.append(hex).append(" (als Knopf angelegt)  ");
+            foundList.append(hex).append(" (added as a button)  ");
         }
-        found.setText("Gemerkt: " + foundList);
+        found.setText("Remembered: " + foundList);
     }
 
     private void stopSweep() {

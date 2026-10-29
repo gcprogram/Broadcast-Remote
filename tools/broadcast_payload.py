@@ -1,14 +1,14 @@
-"""Paketberechnung der Broadcast-Remote-Profile (gleiche Logik wie android/.../Payload.java).
+"""Packet computation for Broadcast-Remote profiles (same logic as android/.../Payload.java).
 
-Ein Profil (JSON, siehe docs/PROFILE_FORMAT.md) beschreibt entweder eine Vorlage
-    prefix + [code ^ xor] + CRC-16 (optional, zwei Bytes Big-Endian)
-oder eine Tabelle fertiger Pakete je Code.
+A profile (JSON, see docs/PROFILE_FORMAT.md) describes either a template
+    prefix + [code ^ xor] + CRC-16 (optional, two bytes big endian)
+or a table of finished packets per code.
 """
 import json
 
 
 def crc16(data_byte, poly, init=0, reflected=True, swap=False, xor_out=0):
-    """CRC-16 ueber ein Byte. Ausgabe = (swap ? vertauschte Bytes : crc) ^ xor_out."""
+    """CRC-16 over one byte. Output = (swap ? swapped bytes : crc) ^ xor_out."""
     crc = init & 0xFFFF
     if reflected:
         crc ^= data_byte & 0xFF
@@ -24,7 +24,7 @@ def crc16(data_byte, poly, init=0, reflected=True, swap=False, xor_out=0):
 
 
 def _num(value):
-    """Hexstring ("0b", "0x0b") oder Zahl -> int (Zahlen im JSON sind dezimal, Strings sind hex)."""
+    """Hex string ("0b", "0x0b") or number -> int (numbers in the JSON are decimal, strings are hex)."""
     if isinstance(value, int):
         return value
     return int(str(value).strip().removeprefix("0x").removeprefix("0X"), 16)
@@ -36,7 +36,7 @@ def load_profile(path):
 
 
 def packet(profile, code):
-    """Nutzbytes fuer einen Code. Wirft KeyError, wenn die Tabelle den Code nicht enthaelt."""
+    """Payload bytes for one code. Raises KeyError if the table does not contain the code."""
     pl = profile["payload"]
     if pl.get("type", "template") == "table":
         table = {_num(k): bytes.fromhex(v) for k, v in pl["packets"].items()}

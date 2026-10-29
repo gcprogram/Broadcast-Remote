@@ -21,9 +21,9 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocket;
 
 /**
- * Minimaler HTTPS-Server mit MCP (Streamable HTTP, nur JSON-Antworten) unter POST /mcp.
- * Jede Anfrage braucht "Authorization: Bearer <token>". Nur Verbindungen aus privaten Netzen
- * (LAN, VPN, localhost) werden angenommen.
+ * Minimal HTTPS server with MCP (Streamable HTTP, JSON replies only) at POST /mcp.
+ * Every request needs "Authorization: Bearer <token>". Only connections from private networks
+ * (LAN, VPN, localhost) are accepted.
  */
 final class RemoteServer {
     interface Api {
@@ -39,20 +39,20 @@ final class RemoteServer {
     private static final int MAX_HEADER = 16 * 1024;
     private static final int MAX_BODY = 64 * 1024;
     private static final String TOOLS = "["
-            + "{\"name\":\"send\",\"description\":\"Sendet einen Funktionscode (Datenbyte) des aktiven Profils an das Gerät "
-            + "und wiederholt ihn, bis ein neuer Befehl oder off kommt. Die gültigen Codes liefert buttons. "
-            + "Ohne neuen Befehl schaltet die App nach der Auto-Aus-Zeit des Profils selbst aus.\","
+            + "{\"name\":\"send\",\"description\":\"Sends a function code (data byte) of the active profile to the device "
+            + "and repeats it until a new command or off arrives. The valid codes are returned by buttons. "
+            + "Without a new command the app switches off by itself after the profile's auto-off time.\","
             + "\"inputSchema\":{\"type\":\"object\",\"properties\":{\"code\":{\"type\":\"integer\",\"minimum\":0,"
-            + "\"maximum\":255,\"description\":\"Datenbyte 0-255 (dezimal, oder Text wie 0x11)\"}},"
+            + "\"maximum\":255,\"description\":\"Data byte 0-255 (decimal, or text such as 0x11)\"}},"
             + "\"required\":[\"code\"]}},"
-            + "{\"name\":\"off\",\"description\":\"Schaltet das Gerät aus (sendet den Aus-Code des Profils).\","
+            + "{\"name\":\"off\",\"description\":\"Switches the device off (sends the off code of the profile).\","
             + "\"inputSchema\":{\"type\":\"object\",\"properties\":{}}},"
-            + "{\"name\":\"status\",\"description\":\"Zeigt das aktive Profil, ob etwas läuft, die Zeit bis zum "
-            + "Auto-Aus und ob Bluetooth am Handy an ist (sonst sind alle Sendebefehle gesperrt). Das Gerät "
-            + "sendet nichts zurück, ob es reagiert, ist nicht prüfbar.\","
+            + "{\"name\":\"status\",\"description\":\"Shows the active profile, whether something is running, the time until "
+            + "auto-off and whether Bluetooth is on at the phone (otherwise all send commands are locked). The device "
+            + "sends nothing back, so whether it reacted cannot be checked.\","
             + "\"inputSchema\":{\"type\":\"object\",\"properties\":{}}},"
-            + "{\"name\":\"buttons\",\"description\":\"Listet die Knöpfe des aktiven Profils (Code dezimal und hex, "
-            + "Beschriftung, in der Reihenfolge der App).\","
+            + "{\"name\":\"buttons\",\"description\":\"Lists the buttons of the active profile (code in decimal and hex, "
+            + "label, in the order of the app).\","
             + "\"inputSchema\":{\"type\":\"object\",\"properties\":{}}}]";
 
     private final SSLContext ssl;
@@ -126,7 +126,7 @@ final class RemoteServer {
                 if (c > 0) headers.put(lines[i].substring(0, c).trim().toLowerCase(), lines[i].substring(c + 1).trim());
             }
             if (!authorized(headers.get("authorization"))) {
-                Thread.sleep(500);                                   // bremst Raten
+                Thread.sleep(500);                                   // slows down guessing
                 respond(out, 401, "Unauthorized", "{\"error\":\"unauthorized\"}");
                 return;
             }
@@ -158,7 +158,7 @@ final class RemoteServer {
             if (answer == null) respond(out, 202, "Accepted", null);
             else respond(out, 200, "OK", answer);
         } catch (Exception ignored) {
-            // Verbindung abgebrochen oder TLS-Fehler
+            // connection aborted or TLS error
         } finally {
             try {
                 s.close();
@@ -181,7 +181,7 @@ final class RemoteServer {
             if (c < 0) return null;
             buf.write(c);
             last4 = (last4 << 8) | c;
-            if (last4 == 0x0D0A0D0A) return buf.toByteArray();     // Ende der Header: \r\n\r\n
+            if (last4 == 0x0D0A0D0A) return buf.toByteArray();     // end of the headers: \r\n\r\n
         }
         return null;
     }
@@ -196,7 +196,7 @@ final class RemoteServer {
         out.flush();
     }
 
-    /** JSON-RPC 2.0; null bei Notifications (keine Antwort). */
+    /** JSON-RPC 2.0; null for notifications (no reply). */
     private String rpc(String text) {
         Object id = null;
         try {
@@ -212,8 +212,8 @@ final class RemoteServer {
                             params != null ? params.optString("protocolVersion", "2025-03-26") : "2025-03-26");
                     result.put("capabilities", new JSONObject().put("tools", new JSONObject().put("listChanged", false)));
                     result.put("serverInfo", new JSONObject().put("name", "broadcast-remote").put("version", "1.0"));
-                    result.put("instructions", "Steuert ein BLE-Broadcast-Gerät über ein Profil. Vor Beginn status aufrufen; "
-                            + "am Ende immer off senden.");
+                    result.put("instructions", "Controls a BLE broadcast device through a profile. Call status first; "
+                            + "always finish with off.");
                     break;
                 case "ping":
                     break;
@@ -224,11 +224,11 @@ final class RemoteServer {
                     result = callTool(params);
                     break;
                 default:
-                    return error(id, -32601, "Methode unbekannt: " + method);
+                    return error(id, -32601, "Unknown method: " + method);
             }
             return new JSONObject().put("jsonrpc", "2.0").put("id", id).put("result", result).toString();
         } catch (Exception e) {
-            return error(id, -32700, "Ungültige Anfrage");
+            return error(id, -32700, "Invalid request");
         }
     }
 
@@ -245,7 +245,7 @@ final class RemoteServer {
                 } catch (NumberFormatException e) {
                     code = -1;
                 }
-                text = code < 0 || code > 255 ? "Fehler: code muss 0-255 sein" : api.send(code);
+                text = code < 0 || code > 255 ? "Error: code must be 0-255" : api.send(code);
                 break;
             }
             case "off":
@@ -258,11 +258,11 @@ final class RemoteServer {
                 text = api.buttons().toString();
                 break;
             default:
-                text = "Fehler: unbekanntes Werkzeug " + name;
+                text = "Error: unknown tool " + name;
         }
         return new JSONObject()
                 .put("content", new JSONArray().put(new JSONObject().put("type", "text").put("text", text)))
-                .put("isError", text.startsWith("Fehler"));
+                .put("isError", text.startsWith("Error"));
     }
 
     private static String error(Object id, int code, String message) {

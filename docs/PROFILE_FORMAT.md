@@ -64,7 +64,7 @@ you do not know (or do not need) the algorithm. A code without an entry cannot b
 
 ## off, autoOffSeconds, buttons
 
-- `off.code` is the code sent for **AUS** (default `00`); it is sent for `sendMs` and then advertising stops.
+- `off.code` is the code sent for **OFF** (default `00`); it is sent for `sendMs` and then advertising stops.
 - `off.silent: true` (instead of `code`): the original app sends no packet for *off*, it just stops. *Off* then only stops advertising.
 - `autoOffSeconds` (5-3600): no new command for this long → the app sends the off code by itself.
 - `buttons`: order = order on screen. `label` (optional) replaces the hex code, `icon` (optional) is one emoji.

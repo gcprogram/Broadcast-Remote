@@ -23,7 +23,7 @@ import android.widget.Toast;
 
 import java.util.List;
 
-/** Fernsteuerung: Server ausdruecklich ein-/ausschalten, Zugriffstoken, Zertifikat, Verbindungshinweise. */
+/** Remote control: switch the server on/off explicitly, access token, certificate, connection hints. */
 public class RemoteActivity extends Activity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Switch toggle;
@@ -39,14 +39,14 @@ public class RemoteActivity extends Activity {
         root.setPadding(32, 48, 32, 32);
 
         TextView warn = new TextView(this);
-        warn.setText("Die Fernsteuerung ist standardmäßig aus und muss hier jedes Mal bewusst eingeschaltet "
-                + "werden. Jede Anfrage braucht das Zugriffstoken, es werden nur Verbindungen aus privaten "
-                + "Netzen (WLAN, VPN, USB) angenommen. Ohne neuen Befehl schaltet die App nach 3 Minuten "
-                + "automatisch aus.");
+        warn.setText("Remote control is off by default and has to be switched on here deliberately each time. "
+                + "Every request needs the access token, and only connections from private networks "
+                + "(Wi-Fi, VPN, USB) are accepted. Without a new command the app switches off by itself "
+                + "after the auto-off time of the profile.");
         root.addView(warn);
 
         toggle = new Switch(this);
-        toggle.setText("Fernsteuerung (HTTPS/MCP)");
+        toggle.setText("Remote control (HTTPS/MCP)");
         toggle.setTextSize(18);
         toggle.setPadding(0, 32, 0, 16);
         toggle.setOnCheckedChangeListener((b, on) -> {
@@ -59,7 +59,7 @@ public class RemoteActivity extends Activity {
         root.addView(info);
 
         TextView tokenTitle = new TextView(this);
-        tokenTitle.setText("Zugriffstoken");
+        tokenTitle.setText("Access token");
         tokenTitle.setTypeface(null, Typeface.BOLD);
         tokenTitle.setPadding(0, 32, 0, 0);
         root.addView(tokenTitle);
@@ -68,11 +68,11 @@ public class RemoteActivity extends Activity {
         tokenView.setTextIsSelectable(true);
         root.addView(tokenView);
         LinearLayout tokenRow = new LinearLayout(this);
-        tokenRow.addView(button("Token kopieren", v -> copy("Broadcast-Remote-Token", Config.token(this))));
-        tokenRow.addView(button("Neues Token", v -> {
+        tokenRow.addView(button("Copy token", v -> copy("Broadcast-Remote-Token", Config.token(this))));
+        tokenRow.addView(button("New token", v -> {
             Config.newToken(this);
             refresh();
-            Toast.makeText(this, "Neues Token gilt sofort, das alte ist ungültig", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "The new token is valid immediately, the old one is void", Toast.LENGTH_LONG).show();
         }));
         root.addView(tokenRow);
 
@@ -81,23 +81,23 @@ public class RemoteActivity extends Activity {
         port.setInputType(InputType.TYPE_CLASS_NUMBER);
         port.setText(String.valueOf(Config.port(this)));
         portRow.addView(port, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-        portRow.addView(button("Port setzen", v -> {
+        portRow.addView(button("Set port", v -> {
             try {
                 int p = Integer.parseInt(port.getText().toString().trim());
                 if (p < 1024 || p > 65535) throw new NumberFormatException();
                 Config.setPort(this, p);
-                Toast.makeText(this, "Gilt beim nächsten Einschalten", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Takes effect the next time it is switched on", Toast.LENGTH_SHORT).show();
             } catch (NumberFormatException e) {
                 Toast.makeText(this, "Port 1024-65535", Toast.LENGTH_SHORT).show();
             }
         }));
         root.addView(portRow);
 
-        root.addView(Ui.wide(button("Zertifikat (PEM) kopieren", v -> {
+        root.addView(Ui.wide(button("Copy certificate (PEM)", v -> {
             if (RemoteService.identity == null) {
-                Toast.makeText(this, "Erst einmal einschalten", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Switch on once first", Toast.LENGTH_SHORT).show();
             } else {
-                copy("Broadcast-Remote-Zertifikat", RemoteService.identity.pem);
+                copy("Broadcast-Remote-certificate", RemoteService.identity.pem);
             }
         })));
 
@@ -123,7 +123,7 @@ public class RemoteActivity extends Activity {
 
     private void copy(String label, String text) {
         getSystemService(ClipboardManager.class).setPrimaryClip(ClipData.newPlainText(label, text));
-        Toast.makeText(this, "Kopiert", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show();
     }
 
     private void setServer(boolean on) {
@@ -145,24 +145,23 @@ public class RemoteActivity extends Activity {
         updating = false;
         tokenView.setText(Config.token(this));
         StringBuilder s = new StringBuilder();
-        if (!RemoteService.error.isEmpty()) s.append("Fehler: ").append(RemoteService.error).append("\n\n");
+        if (!RemoteService.error.isEmpty()) s.append("Error: ").append(RemoteService.error).append("\n\n");
         Tls.Identity id = RemoteService.identity;
         int port = Config.port(this);
         if (RemoteService.running && id != null) {
-            s.append("Läuft. Adressen:\n");
+            s.append("Running. Addresses:\n");
             List<String> ips = id.ips;
             for (String ip : ips) s.append("  https://").append(ip).append(":").append(port).append("/mcp\n");
-            s.append("\nZertifikat-Fingerabdruck (SHA-256):\n").append(id.fingerprint).append("\n");
-            if (id.path != null) s.append("\nZertifikatsdatei:\n").append(id.path).append("\n");
-            s.append("\nAm PC (Claude Code):\n")
-                    .append("1. adb pull ").append(id.path == null ? "<Zertifikatsdatei>" : id.path).append(" broadcast-remote-cert.pem\n")
-                    .append("2. Umgebungsvariable NODE_EXTRA_CA_CERTS auf den Pfad dieser Datei setzen\n")
-                    .append("3. claude mcp add --transport http broadcast-remote https://<IP>:").append(port)
-                    .append("/mcp --header \"Authorization: Bearer <Token>\"\n")
-                    .append("\nOhne WLAN über USB: adb forward tcp:").append(port).append(" tcp:").append(port)
-                    .append(" und dann https://localhost:").append(port).append("/mcp\n");
+            s.append("\nCertificate fingerprint (SHA-256):\n").append(id.fingerprint).append("\n");
+            if (id.path != null) s.append("\nCertificate file:\n").append(id.path).append("\n");
+            s.append("\nOn the PC (see docs/MCP.md):\n")
+                    .append("1. adb pull ").append(id.path == null ? "<certificate file>" : id.path).append(" ~/.broadcast-remote/cert.pem\n")
+                    .append("2. Set BROADCAST_REMOTE_TOKEN (token above) and BROADCAST_REMOTE_URL (address above)\n")
+                    .append("3. Register pc/broadcast_remote_bridge.py as a stdio MCP server\n")
+                    .append("\nWithout Wi-Fi, over USB: adb forward tcp:").append(port).append(" tcp:").append(port)
+                    .append(" and then use https://localhost:").append(port).append("/mcp\n");
         } else {
-            s.append("Aus. Kein Server, kein offener Port.");
+            s.append("Off. No server, no open port.");
         }
         info.setText(s.toString());
     }

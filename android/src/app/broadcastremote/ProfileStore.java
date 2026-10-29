@@ -13,8 +13,8 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Profile als JSON-Dateien im app-eigenen Speicher (files/profiles/&lt;name&gt;.json). Beim ersten Start werden
- * die mitgelieferten Profile aus assets/profiles kopiert. Das aktive Profil steht in den Einstellungen.
+ * Profiles as JSON files in the app's own storage (files/profiles/&lt;name&gt;.json). On first start the bundled
+ * profiles from assets/profiles are copied. The active profile is kept in the settings.
  */
 final class ProfileStore {
     private static Profile cached;
@@ -33,7 +33,7 @@ final class ProfileStore {
         return name.replaceAll("[^A-Za-z0-9._-]", "_") + ".json";
     }
 
-    /** Kopiert mitgelieferte Profile, wenn noch keines vorhanden ist. */
+    /** Copies the bundled profiles if there is none yet. */
     static void ensureDefaults(Context c) {
         File[] files = dir(c).listFiles();
         if (files != null && files.length > 0) return;
@@ -46,7 +46,7 @@ final class ProfileStore {
                 }
             }
         } catch (IOException | IllegalArgumentException ignored) {
-            // ohne Standardprofil bleibt die Liste leer, Setup zeigt das an
+            // without a default profile the list stays empty, Setup shows that
         }
     }
 
@@ -60,7 +60,7 @@ final class ProfileStore {
                 try {
                     out.add(Profile.parse(new String(Files.readAllBytes(f.toPath()), StandardCharsets.UTF_8)).name);
                 } catch (IOException | IllegalArgumentException ignored) {
-                    // kaputte Datei ueberspringen
+                    // skip a broken file
                 }
             }
         }
@@ -99,7 +99,7 @@ final class ProfileStore {
         cached = null;
     }
 
-    /** Aktives Profil; null, wenn keines vorhanden oder lesbar ist. */
+    /** The active profile; null if there is none or it cannot be read. */
     static synchronized Profile active(Context c) {
         String name = activeName(c);
         if (name == null) return null;
@@ -113,7 +113,7 @@ final class ProfileStore {
         return cached;
     }
 
-    /** Aenderungen am aktiven Profil (Knopfliste usw.) speichern. */
+    /** Save changes to the active profile (button list etc.). */
     static void saveActive(Context c, Profile p) {
         try {
             save(c, p);
@@ -128,7 +128,7 @@ final class ProfileStore {
         byte[] chunk = new byte[4096];
         int n;
         while ((n = in.read(chunk)) > 0) {
-            if (buf.size() > 256 * 1024) throw new IOException("Datei zu groß");
+            if (buf.size() > 256 * 1024) throw new IOException("File too large");
             buf.write(chunk, 0, n);
         }
         return new String(buf.toByteArray(), StandardCharsets.UTF_8);

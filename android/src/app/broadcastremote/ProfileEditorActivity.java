@@ -14,8 +14,8 @@ import java.io.IOException;
 import java.util.Locale;
 
 /**
- * Profil als JSON eingeben oder aendern. "Pruefen" zeigt die berechneten Pakete (zum Vergleich mit Mitschnitten),
- * "Speichern" legt das Profil an und macht es aktiv. Ein geaenderter Name erzeugt ein neues Profil.
+ * Enter or change a profile as JSON. "Check" shows the computed packets (to compare with captures),
+ * "Save" stores the profile and makes it active. A changed name creates a new profile.
  */
 public class ProfileEditorActivity extends Activity {
     static final String EXTRA_JSON = "json";
@@ -32,8 +32,8 @@ public class ProfileEditorActivity extends Activity {
         root.setPadding(32, 48, 32, 32);
 
         TextView help = new TextView(this);
-        help.setText("Profil als JSON. Das Format steht in docs/PROFILE_FORMAT.md im Projekt. "
-                + "Codes als Hexstrings, z. B. \"0b\".");
+        help.setText("Profile as JSON. The format is described in docs/PROFILE_FORMAT.md in the project. "
+                + "Codes are hex strings, for example \"0b\".");
         help.setTextSize(13);
         root.addView(help);
 
@@ -50,8 +50,8 @@ public class ProfileEditorActivity extends Activity {
                 LinearLayout.LayoutParams.WRAP_CONTENT));
 
         LinearLayout row = new LinearLayout(this);
-        row.addView(Ui.button(this, "Prüfen", v -> check()));
-        row.addView(Ui.button(this, "Speichern", v -> save()));
+        row.addView(Ui.button(this, "Check", v -> check()));
+        row.addView(Ui.button(this, "Save", v -> save()));
         root.addView(row);
 
         result = new TextView(this);
@@ -70,7 +70,7 @@ public class ProfileEditorActivity extends Activity {
             return Profile.parse(editor.getText().toString());
         } catch (IllegalArgumentException e) {
             result.setTextColor(0xFFC62828);
-            result.setText("Fehler: " + e.getMessage());
+            result.setText("Error: " + e.getMessage());
             return null;
         }
     }
@@ -79,22 +79,22 @@ public class ProfileEditorActivity extends Activity {
         Profile p = parse();
         if (p == null) return;
         result.setTextColor(0xFF2E7D32);
-        StringBuilder s = new StringBuilder("OK, Profil \"" + p.name + "\", " + p.buttons.size() + " Knöpfe.\n\nPakete:\n");
-        s.append(p.offSilent ? "  Aus   (kein Paket, Senden wird gestoppt)\n" : preview(p, p.offCode, "Aus"));
+        StringBuilder s = new StringBuilder("OK, profile \"" + p.name + "\", " + p.buttons.size() + " buttons.\n\nPackets:\n");
+        s.append(p.offSilent ? "  Off    (no packet, sending is stopped)\n" : preview(p, p.offCode, "Off"));
         int shown = 0;
         for (Profile.Btn b : p.buttons) {
             if (!p.offSilent && b.code == p.offCode) continue;
             if (shown++ >= 4) break;
-            s.append(preview(p, b.code, "Knopf"));
+            s.append(preview(p, b.code, "Button"));
         }
         result.setText(s.toString());
     }
 
     private static String preview(Profile p, int code, String what) {
         try {
-            return String.format(Locale.ROOT, "  %-5s %02x  %s\n", what, code, Controller.hexSpaced(p.packet(code)));
+            return String.format(Locale.ROOT, "  %-6s %02x  %s\n", what, code, Controller.hexSpaced(p.packet(code)));
         } catch (IllegalArgumentException e) {
-            return String.format(Locale.ROOT, "  %-5s %02x  FEHLT: %s\n", what, code, e.getMessage());
+            return String.format(Locale.ROOT, "  %-6s %02x  MISSING: %s\n", what, code, e.getMessage());
         }
     }
 
@@ -102,9 +102,9 @@ public class ProfileEditorActivity extends Activity {
         final Profile p = parse();
         if (p == null) return;
         if (ProfileStore.exists(this, p.name)) {
-            new AlertDialog.Builder(this).setMessage("Profil \"" + p.name + "\" überschreiben?")
-                    .setPositiveButton("Überschreiben", (d, w) -> store(p))
-                    .setNegativeButton("Abbrechen", null).show();
+            new AlertDialog.Builder(this).setMessage("Overwrite profile \"" + p.name + "\"?")
+                    .setPositiveButton("Overwrite", (d, w) -> store(p))
+                    .setNegativeButton("Cancel", null).show();
         } else {
             store(p);
         }
@@ -113,13 +113,13 @@ public class ProfileEditorActivity extends Activity {
     private void store(Profile p) {
         try {
             Controller ctl = Controller.get(this);
-            if (!p.name.equals(ProfileStore.activeName(this))) ctl.send(Controller.OFF, "profilwechsel");
+            if (!p.name.equals(ProfileStore.activeName(this))) ctl.send(Controller.OFF, "profile change");
             ProfileStore.save(this, p);
             ProfileStore.setActive(this, p.name);
             finish();
         } catch (IOException e) {
             result.setTextColor(0xFFC62828);
-            result.setText("Speichern fehlgeschlagen: " + e.getMessage());
+            result.setText("Saving failed: " + e.getMessage());
         }
     }
 }

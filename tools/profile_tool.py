@@ -1,13 +1,13 @@
-"""Werkzeug fuer Broadcast-Remote-Profile.
+"""Tool for Broadcast-Remote profiles.
 
-  python profile_tool.py packet  profil.json 01 0b        Pakete fuer Codes berechnen (hex)
-  python profile_tool.py check   profil.json mitschnitt.txt   Berechnung gegen Mitschnitt pruefen
-  python profile_tool.py learn   mitschnitt.txt --name X       Profil aus Mitschnitt ableiten
+  python profile_tool.py packet  profile.json 01 0b        compute packets for codes (hex)
+  python profile_tool.py check   profile.json capture.txt  check the computation against a capture
+  python profile_tool.py learn   capture.txt --name X      derive a profile from a capture
 
-Mitschnitt-Datei: eine Zeile je Paket, "code paket" in hex, z. B.
+Capture file: one line per packet, "code packet" in hex, for example
   00 6db643ce97fe427ce5157d
   01 6db643ce97fe427ce49c6c
-Zeilen mit # sind Kommentare. Die Pakete liefert tools/hci_adv_extract.py.
+Lines with # are comments. tools/hci_adv_extract.py delivers the packets.
 """
 import argparse
 import itertools
@@ -32,7 +32,7 @@ def read_capture(path):
 
 
 def learn(capture, name):
-    """Leitet ein Profil aus Paaren (Code, Paket) ab. Vorlage, wenn Prefix/XOR/CRC passen, sonst Tabelle."""
+    """Derives a profile from pairs (code, packet): a template if prefix/XOR/CRC fit, otherwise a table."""
     lengths = {len(p) for p in capture.values()}
     base = {
         "format": 1, "name": name,
@@ -44,18 +44,18 @@ def learn(capture, name):
     table = {"type": "table", "packets": {"%02x" % c: p.hex() for c, p in sorted(capture.items())}}
     if len(lengths) != 1 or len(capture) < 3:
         base["payload"] = table
-        return base, "Tabelle (zu wenige oder unterschiedlich lange Pakete)"
+        return base, "table (too few packets or packets of different length)"
     n = lengths.pop()
     codes = sorted(capture)
 
-    # Variante ohne CRC: prefix + (code ^ xor)
+    # variant without CRC: prefix + (code ^ xor)
     prefix = capture[codes[0]][:n - 1]
     xors = {capture[c][n - 1] ^ c for c in codes}
     if all(capture[c][:n - 1] == prefix for c in codes) and len(xors) == 1:
         base["payload"] = {"type": "template", "prefix": prefix.hex(), "xor": "%02x" % xors.pop()}
-        return base, "Vorlage ohne CRC"
+        return base, "template without CRC"
 
-    # Variante mit CRC: prefix + (code ^ xor) + crc16
+    # variant with CRC: prefix + (code ^ xor) + crc16
     if n >= 3:
         prefix = capture[codes[0]][:n - 3]
         xors = {capture[c][n - 3] ^ c for c in codes}
@@ -69,9 +69,9 @@ def learn(capture, name):
                         "type": "template", "prefix": prefix.hex(), "xor": "%02x" % xor,
                         "crc": {"poly": "%04x" % poly, "init": "%04x" % init, "reflected": reflected,
                                 "swap": swap, "xorOut": "%04x" % outs.pop()}}
-                    return base, "Vorlage mit CRC-16 (Modell passt zu allen %d Paketen)" % len(codes)
+                    return base, "template with CRC-16 (model fits all %d packets)" % len(codes)
     base["payload"] = table
-    return base, "Tabelle (kein bekanntes Modell passt)"
+    return base, "table (no known model fits)"
 
 
 def main(argv):
@@ -85,7 +85,7 @@ def main(argv):
     c.add_argument("capture")
     l = sub.add_parser("learn")
     l.add_argument("capture")
-    l.add_argument("--name", default="Neues Profil")
+    l.add_argument("--name", default="New profile")
     l.add_argument("-o", "--output")
     a = ap.parse_args(argv)
 
@@ -96,7 +96,7 @@ def main(argv):
             try:
                 print("%02x  %s" % (n, bp.packet(prof, n).hex(" ")))
             except KeyError:
-                print("%02x  FEHLT in der Tabelle" % n)
+                print("%02x  MISSING in the table" % n)
         return 0
     if a.cmd == "check":
         prof = bp.load_profile(a.profile)
@@ -108,8 +108,8 @@ def main(argv):
                 got = None
             ok = got == want
             bad += not ok
-            print("%02x  %s  %s" % (code, "ok " if ok else "FEHLER", want.hex(" ") + ("" if ok else "  berechnet: " + (got.hex(" ") if got else "-"))))
-        print("alle Pakete stimmen" if not bad else "%d Abweichungen" % bad)
+            print("%02x  %s  %s" % (code, "ok   " if ok else "ERROR", want.hex(" ") + ("" if ok else "  computed: " + (got.hex(" ") if got else "-"))))
+        print("all packets match" if not bad else "%d mismatches" % bad)
         return 1 if bad else 0
     prof, how = learn(read_capture(a.capture), a.name)
     text = json.dumps(prof, indent=2, ensure_ascii=False)

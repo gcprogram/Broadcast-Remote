@@ -20,19 +20,19 @@ import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Gemeinsame Sendelogik fuer Knoepfe, Suchlauf und Fernsteuerung. Alles, was das Senden bestimmt (Company-ID,
- * Service-UUIDs, Modus, Wiederholung, Paketberechnung, Auto-Aus), kommt aus dem aktiven Profil.
- * Sicherheit: nach profile.autoOffSeconds ohne neuen Befehl (weder Funktion noch Aus) wird automatisch ausgeschaltet.
+ * Shared sending logic for the buttons, the sweep and the remote control. Everything that determines sending
+ * (company ID, service UUIDs, mode, repeat, packet computation, auto-off) comes from the active profile.
+ * Safety: after profile.autoOffSeconds without a new command (neither function nor off) it switches off by itself.
  */
 final class Controller {
     interface Listener {
         void onState(String text, int active);
     }
 
-    /** Pseudo-Code fuer "Aus"; gesendet wird dann profile.offCode. */
+    /** Pseudo code for "off"; what is actually sent is profile.offCode. */
     static final int OFF = -1;
-    static final String BT_OFF = "Bluetooth ist aus - Knöpfe und Fernsteuerung sind gesperrt. Bitte Bluetooth einschalten.";
-    static final String NO_PROFILE = "Kein Profil geladen - bitte unter Setup ein Profil laden.";
+    static final String BT_OFF = "Bluetooth is off - buttons and remote control are locked. Please switch Bluetooth on.";
+    static final String NO_PROFILE = "No profile loaded - please load a profile under Setup.";
 
     private static Controller instance;
 
@@ -42,14 +42,14 @@ final class Controller {
     }
 
     private final Context ctx;
-    private final Handler timer = new Handler(Looper.getMainLooper());     // Wiederholung, Auto-Aus
-    private final Handler commands = new Handler(Looper.getMainLooper());  // Befehle aus anderen Threads
+    private final Handler timer = new Handler(Looper.getMainLooper());     // repeat, auto-off
+    private final Handler commands = new Handler(Looper.getMainLooper());  // commands from other threads
     private BluetoothLeAdvertiser advertiser;
     private AdvertiseCallback callback;
     private Listener listener;
     private int active = OFF;
     private long autoOffAt = 0;
-    private String lastText = "Bereit.";
+    private String lastText = "Ready.";
 
     private Controller(Context ctx) {
         this.ctx = ctx;
@@ -84,7 +84,7 @@ final class Controller {
         return active;
     }
 
-    /** Verbleibende Sekunden bis zum Auto-Aus, 0 wenn nichts laeuft. */
+    /** Seconds left until auto-off, 0 if nothing is running. */
     long autoOffInSeconds() {
         return active == OFF ? 0 : Math.max(0, (autoOffAt - SystemClock.elapsedRealtime() + 999) / 1000);
     }
@@ -98,12 +98,12 @@ final class Controller {
         if (!bluetoothOn(ctx)) return BT_OFF;
         Profile p = profile();
         if (p == null) return NO_PROFILE;
-        String head = "Profil " + p.name + ": ";
-        return head + (active == OFF ? "aus"
-                : String.format("aktiv: Code 0x%02x, Auto-Aus in %d s", active, autoOffInSeconds()));
+        String head = "Profile " + p.name + ": ";
+        return head + (active == OFF ? "off"
+                : String.format("active: code 0x%02x, auto-off in %d s", active, autoOffInSeconds()));
     }
 
-    /** Bei Bluetooth aus: alles anhalten und melden; beim Wiedereinschalten Meldung zuruecknehmen. */
+    /** With Bluetooth off: stop everything and report it; clear the message when it is switched on again. */
     void refreshBluetooth() {
         if (!bluetoothOn(ctx)) {
             timer.removeCallbacksAndMessages(null);
@@ -113,11 +113,11 @@ final class Controller {
             autoOffAt = 0;
             report(BT_OFF);
         } else if (BT_OFF.equals(lastText)) {
-            report("Bereit.");
+            report("Ready.");
         }
     }
 
-    /** Aus beliebigem Thread aufrufbar. */
+    /** Callable from any thread. */
     String sendSync(final int code, final String source) {
         if (Looper.myLooper() == Looper.getMainLooper()) return send(code, source);
         FutureTask<String> task = new FutureTask<>(() -> send(code, source));
@@ -125,28 +125,28 @@ final class Controller {
         try {
             return task.get(4, TimeUnit.SECONDS);
         } catch (Exception e) {
-            return "Fehler: " + e;
+            return "Error: " + e;
         }
     }
 
-    /** Nur Hauptthread. OFF oder der Aus-Code des Profils = aus (kurz gesendet), sonst Wiederholung. */
+    /** Main thread only. OFF or the profile's off code = off (sent briefly), anything else is repeated. */
     String send(int code, String source) {
         timer.removeCallbacksAndMessages(null);
         final Profile p = profile();
-        if (p == null) return "Fehler: " + NO_PROFILE;
+        if (p == null) return "Error: " + NO_PROFILE;
         BluetoothAdapter adapter = ctx.getSystemService(BluetoothManager.class).getAdapter();
         if (adapter == null || !adapter.isEnabled()) {
             refreshBluetooth();
-            return "Fehler: " + BT_OFF;
+            return "Error: " + BT_OFF;
         }
         advertiser = adapter.getBluetoothLeAdvertiser();
-        if (advertiser == null) return fail("Dieses Handy kann kein BLE-Advertising.");
+        if (advertiser == null) return fail("This phone cannot do BLE advertising.");
         final boolean off = code == OFF || (!p.offSilent && code == p.offCode);
         if (off && p.offSilent) {
             stopAdvertising();
             active = OFF;
             autoOffAt = 0;
-            return report("AUS  ->  Senden gestoppt (dieses Profil sendet bei Aus kein Paket)  [" + source + "]");
+            return report("OFF  ->  sending stopped (this profile sends no packet for off)  [" + source + "]");
         }
         final int data = off ? p.offCode : code;
         byte[] packet;
@@ -162,7 +162,7 @@ final class Controller {
             autoOffAt = 0;
             timer.postDelayed(() -> {
                 stopAdvertising();
-                report("Bereit.");
+                report("Ready.");
             }, p.offSendMs);
         } else {
             active = code;
@@ -170,10 +170,10 @@ final class Controller {
             timer.postDelayed(new Repeat(p, packet), p.repeatMs);
             timer.postDelayed(() -> {
                 send(OFF, "auto");
-                report("Auto-Aus: " + p.autoOffSeconds + " s ohne neuen Befehl.");
+                report("Auto-off: " + p.autoOffSeconds + " s without a new command.");
             }, p.autoOffSeconds * 1000L);
         }
-        return report((off ? "AUS" : String.format("Code 0x%02x", code))
+        return report((off ? "OFF" : String.format("Code 0x%02x", code))
                 + "  ->  " + hexSpaced(packet) + "  [" + source + "]");
     }
 
@@ -216,15 +216,15 @@ final class Controller {
         callback = new AdvertiseCallback() {
             @Override
             public void onStartFailure(final int errorCode) {
-                timer.post(() -> report("Senden fehlgeschlagen, Fehler " + errorCode));
+                timer.post(() -> report("Sending failed, error " + errorCode));
             }
         };
         try {
             advertiser.startAdvertising(settings, data.build(), callback);
         } catch (SecurityException e) {
-            return "Berechtigung fehlt (Bluetooth-Geräte in der Nähe).";
+            return "Permission missing (Bluetooth: nearby devices).";
         } catch (IllegalStateException | IllegalArgumentException e) {
-            return "Bluetooth ist nicht bereit oder das Profil ist unzulässig: " + e.getMessage();
+            return "Bluetooth is not ready or the profile is invalid: " + e.getMessage();
         }
         return null;
     }
@@ -248,7 +248,7 @@ final class Controller {
     private String fail(String text) {
         active = OFF;
         autoOffAt = 0;
-        return report("Fehler: " + text);
+        return report("Error: " + text);
     }
 
     private String report(String text) {

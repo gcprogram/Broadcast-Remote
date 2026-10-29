@@ -6,8 +6,7 @@ those packets, driven by a **device profile** (a small JSON file). Optionally th
 by an AI assistant through an [MCP](https://modelcontextprotocol.io) interface.
 
 > Status: working with one device (ZASJ047, from the LS-Remote app family). Another device is a matter of adding a
-> profile, see [docs/CAPTURE_GUIDE.md](docs/CAPTURE_GUIDE.md). The user interface is currently in German; menu names
-> are given below with their meaning.
+> profile, see [docs/CAPTURE_GUIDE.md](docs/CAPTURE_GUIDE.md).
 
 ## How it works
 
@@ -49,13 +48,19 @@ nothing happens, which is the point of the next sections: put your own device in
 
 | Screen (menu entry) | What it does |
 |---|---|
-| **Main page** | One button per function of the active profile, a large **AUS** (off) button and a status line. If Bluetooth is off, buttons and remote control are locked and a red message says so. |
-| *Knöpfe bearbeiten* (edit buttons) | Reorder, rename, choose an emoji icon, add or remove buttons. |
-| *Suchlauf* (sweep) | Sends every code in a range one after the other. Tap **MERKEN** (remember) when the device reacts: the code becomes a button of the active profile. |
-| *Lauschtest* (listen test) | Sends a code and scans at the same time to see whether the device sends *anything* back. For the supported device: nothing, it only receives. |
-| *Lernen* (learn mode) | Builds a profile from another phone running the original app, see below. |
-| *Fernsteuerung* (remote control) | Switches the HTTPS/MCP server on (off by default); shows address, access token and certificate. See [docs/MCP.md](docs/MCP.md). |
-| *Setup (Profile)* | Choose the active profile; edit it as JSON (with a packet preview), copy, delete, load from or save to a file, or enter a new one. |
+| **Main page** | One button per function of the active profile, a large **OFF** button and a status line. If Bluetooth is off, buttons and remote control are locked and a red message says so. |
+| *Edit buttons* | Reorder, rename, choose an emoji icon, add or remove buttons. |
+| *Sweep* | Sends every code in a range one after the other. Tap **REMEMBER** when the device reacts: the code becomes a button of the active profile. |
+| *Listen test* | Sends a code and scans at the same time to see whether the device sends *anything* back. For the supported device: nothing, it only receives. |
+| *Learn (profile from another device)* | Builds a profile from another phone running the original app, see below. |
+| *Remote control* | Switches the HTTPS/MCP server on (off by default); shows address, access token and certificate. See [docs/MCP.md](docs/MCP.md). |
+| *Setup (profiles)* | Choose the active profile; edit it as JSON (with a packet preview), copy, delete, load from or save to a file, or enter a new one. |
+
+<p>
+  <img src="docs/img/screenshot-main.png" width="240" alt="Main page with the buttons of the ZASJ047 profile">
+  <img src="docs/img/screenshot-menu.png" width="240" alt="Menu">
+  <img src="docs/img/screenshot-learn.png" width="240" alt="Learn mode screen">
+</p>
 
 ### Button names
 
@@ -79,11 +84,11 @@ runs Broadcast-Remote in learn mode, phone B (or a tablet) runs the **original**
 not have to be present: the original app broadcasts either way.
 
 1. Put the two devices a few metres apart. On B open the original app and choose the device.
-2. On A: *Menü → Lernen*. Step 1 measures the surroundings for a few seconds; leave B idle.
+2. On A: *Menu → Learn*. Step 1 measures the surroundings for a few seconds; leave B idle.
 3. Step 2: press the first function on B while A listens, then step 3 for each further function (the code number is
-   suggested and can be changed). The **Aus aufnehmen** (record off) button records the off command; tick
-   *Aus sendet kein Paket* if the original app sends nothing for off.
-4. *Profil ableiten* (derive profile) tries a formula; if none fits it stores a table of packets. Check the result in
+   suggested and can be changed). The **Record off** button records the off command; tick
+   *Off sends no packet* if the original app sends nothing for off.
+4. *Derive profile* tries a formula; if none fits it stores a table of packets. Check the result in
    the editor and save it.
 
 The code numbers you give are your own labels. A formula is only found if they equal the function numbers the
@@ -106,7 +111,7 @@ same captured packets).
 
 ## Control from a PC or an AI assistant
 
-Switch on *Fernsteuerung*, copy the token and the certificate, set `BROADCAST_REMOTE_TOKEN` and
+Switch on *Remote control*, copy the token and the certificate, set `BROADCAST_REMOTE_TOKEN` and
 `BROADCAST_REMOTE_URL`, and register the bridge as a stdio MCP server ([.mcp.json.example](.mcp.json.example)).
 The assistant gets four tools: `status`, `buttons`, `send(code)` and `off`. The bridge exists because many MCP
 clients cannot talk to a self-signed certificate; it pins the phone's certificate itself and takes the token from
