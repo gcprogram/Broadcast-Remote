@@ -78,10 +78,14 @@ public class ProbeActivity extends Activity implements Controller.Listener {
     }
 
     private void startProbe() {
-        if (Build.VERSION.SDK_INT >= 31 && !Ui.has(this, Manifest.permission.BLUETOOTH_SCAN)) {
-            requestPermissions(new String[]{Manifest.permission.BLUETOOTH_SCAN}, 3);
-            Toast.makeText(this, "Bitte \"Geräte in der Nähe\" erlauben und den Lauschtest danach nochmal starten.",
+        if (!Ui.hasScan(this)) {
+            Ui.requestScan(this);
+            Toast.makeText(this, "Bitte die Berechtigung erlauben (Geräte in der Nähe bzw. Standort) und den Lauschtest danach nochmal starten.",
                     Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (Ui.locationOff(this)) {
+            info.setText(Ui.LOCATION_HINT);
             return;
         }
         int c;

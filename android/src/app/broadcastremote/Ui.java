@@ -3,6 +3,8 @@ package app.broadcastremote;
 import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
+import android.location.LocationManager;
+import android.provider.Settings;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.text.SpannableString;
@@ -54,6 +56,32 @@ final class Ui {
     static boolean has(Activity a, String permission) {
         return Build.VERSION.SDK_INT < 31 || a.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED;
     }
+
+    /** Scannen: ab Android 12 BLUETOOTH_SCAN, davor die Standort-Berechtigung. */
+    static boolean hasScan(Activity a) {
+        if (Build.VERSION.SDK_INT >= 31) return a.checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED;
+        return Build.VERSION.SDK_INT < 23
+                || a.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    static void requestScan(Activity a) {
+        a.requestPermissions(new String[]{Build.VERSION.SDK_INT >= 31 ? Manifest.permission.BLUETOOTH_SCAN
+                : Manifest.permission.ACCESS_FINE_LOCATION}, 3);
+    }
+
+    /** Vor Android 12 liefert ein Bluetooth-Scan nur dann Ergebnisse, wenn die Ortungsdienste an sind. */
+    static boolean locationOff(Activity a) {
+        if (Build.VERSION.SDK_INT >= 31) return false;
+        if (Build.VERSION.SDK_INT >= 28) return !a.getSystemService(LocationManager.class).isLocationEnabled();
+        try {
+            return Settings.Secure.getInt(a.getContentResolver(), Settings.Secure.LOCATION_MODE) == 0;
+        } catch (Settings.SettingNotFoundException e) {
+            return false;
+        }
+    }
+
+    static final String LOCATION_HINT = "Dieses Android braucht für Bluetooth-Scans eingeschaltete Ortungsdienste "
+            + "(Standort). Bitte einschalten und nochmal starten.";
 
     static void requestSend(Activity a) {
         if (Build.VERSION.SDK_INT >= 31 && !has(a, Manifest.permission.BLUETOOTH_ADVERTISE)) {

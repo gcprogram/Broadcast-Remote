@@ -182,9 +182,13 @@ public class LearnActivity extends Activity {
             show(Controller.BT_OFF);
             return;
         }
-        if (Build.VERSION.SDK_INT >= 31 && !Ui.has(this, Manifest.permission.BLUETOOTH_SCAN)) {
-            requestPermissions(new String[]{Manifest.permission.BLUETOOTH_SCAN}, 3);
-            show("Bitte \"Geräte in der Nähe\" erlauben und den Schritt danach nochmal starten.");
+        if (!Ui.hasScan(this)) {
+            Ui.requestScan(this);
+            show("Bitte die Berechtigung erlauben (Geräte in der Nähe bzw. Standort) und den Schritt danach nochmal starten.");
+            return;
+        }
+        if (Ui.locationOff(this)) {
+            show(Ui.LOCATION_HINT);
             return;
         }
         if (newPhase == 3 && !parseCode()) return;
