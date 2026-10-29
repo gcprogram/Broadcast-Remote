@@ -1,9 +1,9 @@
 # Capturing what the original app sends
 
-## Easiest: Learn mode in the app (needs a second phone or tablet)
+## Easiest: Learn mode in the app (needs a second device)
 
 *Menu → Learn* on the phone running Broadcast Remote; on a **second** device run the original app and choose the
-device. This phone only listens (a phone cannot hear its own broadcasts or read another app's). Follow the steps on
+device (or press the buttons of a hardware remote, if it broadcasts its commands over Bluetooth LE). This phone only listens (a phone cannot hear its own broadcasts or read another app's). Follow the steps on
 screen: measure the surroundings, then record one function after the other, then *Derive profile* and check the
 result in the editor. Record at least *off* (code 00) and three functions so that a formula can be derived.
 

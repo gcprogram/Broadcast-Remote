@@ -1,0 +1,111 @@
+"""Generates the app icon: a remote control with a slanted "MCP" above it and radio waves at its sides.
+
+  python tools/make_icon.py [path-to-bold-font.ttf]
+
+Writes the adaptive-icon foreground PNGs and XML into android/res and a 512 px preview into docs/img/icon.png.
+Needs Pillow. The generated files are committed, so this only has to be run to change the design.
+"""
+import math
+import os
+import sys
+
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FONT = sys.argv[1] if len(sys.argv) > 1 else r"C:\Windows\Fonts\ariblk.ttf"
+BG_TOP, BG_BOTTOM = (13, 110, 230), (8, 52, 140)       # background gradient (preview); the adaptive icon uses BG_FLAT
+BG_FLAT = "#0A57B8"
+BODY, BODY_SHADE = (247, 249, 252), (205, 214, 228)
+BUTTON, OFF_RED, WAVE = (84, 174, 255), (229, 72, 77), (255, 255, 255)
+TEXT, TEXT_SHADOW = (255, 214, 10), (6, 38, 100)
+SS = 4                                                  # supersampling for smooth edges
+
+
+def foreground(size):
+    """The artwork on a transparent square. Coordinates are in 432-unit adaptive-icon space (safe zone: centre 288)."""
+    s = size * SS / 432.0
+    img = Image.new("RGBA", (size * SS, size * SS), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+
+    def P(x, y):
+        return (x * s, y * s)
+
+    def box(x0, y0, x1, y1):
+        return [x0 * s, y0 * s, x1 * s, y1 * s]
+
+    # radio waves left and right of the remote
+    cx, cy = 216, 222
+    for radius, width in ((88, 9), (114, 9)):
+        for side in (-1, 1):
+            start = -30 if side == 1 else 150
+            d.arc(box(cx - radius, cy - radius, cx + radius, cy + radius), start, start + 60, fill=WAVE, width=int(width * s))
+
+    # remote body with a soft shade at the bottom
+    x0, y0, x1, y1 = 161, 150, 271, 352
+    d.rounded_rectangle(box(x0, y0, x1, y1), radius=30 * s, fill=BODY_SHADE)
+    d.rounded_rectangle(box(x0, y0, x1, y1 - 7), radius=30 * s, fill=BODY)
+    # OFF button
+    d.ellipse(box(216 - 14, 180 - 14, 216 + 14, 180 + 14), fill=OFF_RED)
+    # 3 x 3 buttons
+    for row in range(3):
+        for col in range(3):
+            bx, by = 216 + (col - 1) * 31, 226 + row * 31
+            d.ellipse(box(bx - 10, by - 10, bx + 10, by + 10), fill=BUTTON)
+    # long button at the bottom
+    d.rounded_rectangle(box(190, 318, 242, 334), radius=8 * s, fill=BUTTON)
+
+    # slanted "MCP"
+    font = ImageFont.truetype(FONT, int(96 * s))
+    text = "MCP"
+    l, t, r, b = d.textbbox((0, 0), text, font=font)
+    layer = Image.new("RGBA", (int((r - l) + 40 * s), int((b - t) + 40 * s)), (0, 0, 0, 0))
+    ld = ImageDraw.Draw(layer)
+    ox, oy = 20 * s - l, 20 * s - t
+    ld.text((ox + 4 * s, oy + 5 * s), text, font=font, fill=TEXT_SHADOW)
+    ld.text((ox, oy), text, font=font, fill=TEXT)
+    layer = layer.rotate(10, resample=Image.BICUBIC, expand=True)        # counter-clockwise: rising to the right
+    img.alpha_composite(layer, (int(216 * s - layer.size[0] / 2), int(104 * s - layer.size[1] / 2)))
+    return img.resize((size, size), Image.LANCZOS)
+
+
+def preview(size=512):
+    art = foreground(size)
+    bg = Image.new("RGBA", (size, size))
+    px = bg.load()
+    for y in range(size):
+        k = y / (size - 1)
+        color = tuple(int(BG_TOP[i] + (BG_BOTTOM[i] - BG_TOP[i]) * k) for i in range(3)) + (255,)
+        for x in range(size):
+            px[x, y] = color
+    bg.alpha_composite(art)
+    # round the corners like a launcher tile, and zoom in a little: the foreground has transparent margins
+    mask = Image.new("L", (size, size), 0)
+    ImageDraw.Draw(mask).rounded_rectangle([0, 0, size - 1, size - 1], radius=size // 5, fill=255)
+    out = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    out.paste(bg, (0, 0), mask)
+    return out
+
+
+def main():
+    res = os.path.join(ROOT, "android", "res")
+    for folder, px in (("mdpi", 108), ("hdpi", 162), ("xhdpi", 216), ("xxhdpi", 324), ("xxxhdpi", 432)):
+        path = os.path.join(res, "mipmap-" + folder)
+        os.makedirs(path, exist_ok=True)
+        foreground(px).save(os.path.join(path, "ic_launcher_foreground.png"), optimize=True)
+    os.makedirs(os.path.join(res, "mipmap-anydpi-v26"), exist_ok=True)
+    os.makedirs(os.path.join(res, "values"), exist_ok=True)
+    with open(os.path.join(res, "mipmap-anydpi-v26", "ic_launcher.xml"), "w", encoding="utf-8", newline="\n") as f:
+        f.write('<?xml version="1.0" encoding="utf-8"?>\n'
+                '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
+                '    <background android:drawable="@color/ic_launcher_background" />\n'
+                '    <foreground android:drawable="@mipmap/ic_launcher_foreground" />\n'
+                '</adaptive-icon>\n')
+    with open(os.path.join(res, "values", "ic_launcher_background.xml"), "w", encoding="utf-8", newline="\n") as f:
+        f.write('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n'
+                '    <color name="ic_launcher_background">%s</color>\n</resources>\n' % BG_FLAT)
+    preview().save(os.path.join(ROOT, "docs", "img", "icon.png"), optimize=True)
+    print("icon written")
+
+
+if __name__ == "__main__":
+    main()

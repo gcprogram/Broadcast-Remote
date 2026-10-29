@@ -8,7 +8,9 @@ $out = "$here\build"
 Remove-Item $out -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force "$out\classes", "$out\dex" | Out-Null
 
-& "$bt\aapt2.exe" link -o "$out\base.apk" -I $jar --manifest "$here\AndroidManifest.xml" --min-sdk-version 26 --target-sdk-version 34 -A "$here\assets"
+& "$bt\aapt2.exe" compile --dir "$here\res" -o "$out\res.zip"
+if ($LASTEXITCODE) { throw "aapt2 compile failed" }
+& "$bt\aapt2.exe" link -o "$out\base.apk" -I $jar --manifest "$here\AndroidManifest.xml" --min-sdk-version 26 --target-sdk-version 34 -A "$here\assets" "$out\res.zip"
 if ($LASTEXITCODE) { throw "aapt2 link failed" }
 
 $src = Get-ChildItem "$here\src" -Recurse -Filter *.java | ForEach-Object FullName

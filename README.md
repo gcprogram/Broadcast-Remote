@@ -1,3 +1,5 @@
+<img src="docs/img/icon.png" width="96" align="right" alt="Broadcast-Remote app icon">
+
 # Broadcast-Remote
 
 An Android app that remote-controls **receive-only Bluetooth LE devices**: gadgets that never advertise a name,
@@ -52,7 +54,7 @@ nothing happens, which is the point of the next sections: put your own device in
 | *Edit buttons* | Reorder, rename, choose an emoji icon, add or remove buttons. |
 | *Sweep* | Sends every code in a range one after the other. Tap **REMEMBER** when the device reacts: the code becomes a button of the active profile. |
 | *Listen test* | Sends a code and scans at the same time to see whether the device sends *anything* back. For the supported device: nothing, it only receives. |
-| *Learn (profile from another device)* | Builds a profile from another phone running the original app, see below. |
+| *Learn (profile from another device)* | Builds a profile from a second device (a phone running the original app, or a broadcasting hardware remote), see below. |
 | *Remote control* | Switches the HTTPS/MCP server on (off by default); shows address, access token and certificate. See [docs/MCP.md](docs/MCP.md). |
 | *Setup (profiles)* | Choose the active profile; edit it as JSON (with a packet preview), copy, delete, load from or save to a file, or enter a new one. |
 
@@ -80,8 +82,9 @@ device never says), so label the buttons yourself.
 ![Learn mode: phone B runs the original app, phone A records and derives a profile](docs/img/learn-mode.svg)
 
 A phone **cannot hear its own broadcasts**, nor read what another app on it sends, so you need two devices: phone A
-runs Broadcast-Remote in learn mode, phone B (or a tablet) runs the **original** remote app. The device itself does
-not have to be present: the original app broadcasts either way.
+runs Broadcast-Remote in learn mode, phone B (or a tablet) runs the **original** remote app. A **hardware
+remote** works just as well if it sends its commands as Bluetooth LE advertisements (see Limitations). The device
+itself does not have to be present: the original app or remote broadcasts either way.
 
 1. Put the two devices a few metres apart. On B open the original app and choose the device.
 2. On A: *Menu → Learn*. Step 1 measures the surroundings for a few seconds; leave B idle.
@@ -122,6 +125,9 @@ and troubleshooting: [docs/MCP.md](docs/MCP.md).
 
 - Receive-only devices send no feedback; neither the app nor an assistant can tell whether the device reacted.
 - Devices that the original app *connects* to (GATT) are out of scope, as are devices that need pairing.
+- Learn mode hears Bluetooth LE advertisements only. A hardware remote can be learned if it broadcasts (many
+  simple Bluetooth LE remotes do while a button is pressed). Remotes that connect (GATT, HID keyboards), use infrared
+  or a 433 MHz / proprietary 2.4 GHz radio cannot be captured, and neither can encrypted or rolling-code ones.
 - Some devices use a rolling code or a per-device ID. A fixed table may then work only for one device.
 - Android limits advertising: one packet at a time here, and the interval is up to the phone.
 

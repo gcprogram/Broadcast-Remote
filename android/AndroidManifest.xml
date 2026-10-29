@@ -15,7 +15,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
 
-    <application android:label="Broadcast Remote" android:allowBackup="false">
+    <application android:icon="@mipmap/ic_launcher" android:label="Broadcast Remote" android:allowBackup="false">
         <activity android:name=".MainActivity" android:exported="true"
             android:screenOrientation="portrait">
             <intent-filter>

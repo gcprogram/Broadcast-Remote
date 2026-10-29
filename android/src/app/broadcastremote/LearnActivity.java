@@ -91,7 +91,8 @@ public class LearnActivity extends Activity {
 
         TextView warn = new TextView(this);
         warn.setText("ANOTHER device has to send the Bluetooth commands: operate the original app on a "
-                + "second phone or tablet. This phone only listens; it can record neither its own broadcasts nor "
+                + "second phone or tablet, or press the buttons of a remote that broadcasts over Bluetooth LE. "
+                + "This phone only listens; it can record neither its own broadcasts nor "
                 + "those of another app on this phone.");
         warn.setTypeface(null, Typeface.BOLD);
         warn.setTextColor(0xFFC62828);
@@ -99,7 +100,7 @@ public class LearnActivity extends Activity {
 
         TextView help = new TextView(this);
         help.setText("Put the sending device close by (a few metres). Open the original app there and choose the "
-                + "device/profile. The device itself does not have to be present.");
+                + "device/profile (or have the remote ready). The device itself does not have to be present.");
         help.setTextSize(13);
         help.setPadding(0, 16, 0, 16);
         root.addView(help);
