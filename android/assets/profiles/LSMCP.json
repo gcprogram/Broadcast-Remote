@@ -1,0 +1,107 @@
+{
+  "format": 1,
+  "name": "LS",
+  "description": "Broadcast-only Remote (LS). Packet captured from the original app, algorithm verified for codes 0-9.",
+  "advertising": {
+    "companyId": 255,
+    "serviceUuids": [
+      "ae8f"
+    ],
+    "connectable": true,
+    "mode": "low_latency",
+    "txPower": "high",
+    "timeoutMs": 3000,
+    "repeatMs": 1000
+  },
+  "payload": {
+    "type": "template",
+    "prefix": "6db643ce97fe427c",
+    "xor": "e5",
+    "crc": {
+      "poly": "8408",
+      "init": "0000",
+      "reflected": true,
+      "swap": true,
+      "xorOut": "157d"
+    }
+  },
+  "off": {
+    "code": "00",
+    "sendMs": 2000
+  },
+  "autoOffSeconds": 180,
+  "buttons": [
+    {
+      "code": "11",
+      "label": "P1"
+    },
+    {
+      "code": "12",
+      "label": "P2"
+    },
+    {
+      "code": "13",
+      "label": "P3"
+    },
+    {
+      "code": "14",
+      "label": "P4"
+    },
+    {
+      "code": "15",
+      "label": "P5"
+    },
+    {
+      "code": "16",
+      "label": "P6"
+    },
+    {
+      "code": "17",
+      "label": "P7"
+    },
+    {
+      "code": "18",
+      "label": "P8"
+    },
+    {
+      "code": "19",
+      "label": "P9"
+    },
+    {
+      "code": "20",
+      "label": "P10"
+    },
+    {
+      "code": "0c",
+      "label": "M1"
+    },
+    {
+      "code": "0b",
+      "label": "M2"
+    },
+	{
+      "code": "34",
+      "label": "M3"
+    },
+    {
+      "code": "38",
+      "label": "S1"
+    },
+    {
+      "code": "36",
+      "label": "S2"
+    },
+    {
+      "code": "37",
+      "label": "S3"
+    },
+    {
+      "code": "39",
+      "label": "X1"
+    },
+    {
+      "code": "35",
+      "label": "X2"
+    }
+  ]
+}
