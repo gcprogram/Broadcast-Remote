@@ -1,7 +1,7 @@
 {
   "format": 1,
   "name": "ZASJ047",
-  "description": "Broadcast-only toy (LS-Remote family). Packet captured from the original app, algorithm verified for codes 0-9.",
+  "description": "Broadcast-only remote (LS-Remote family). Packet captured from the original app, algorithm verified for codes 0-9.",
   "advertising": {
     "companyId": 255,
     "serviceUuids": ["ae8f"],
