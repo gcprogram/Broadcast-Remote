@@ -1,7 +1,7 @@
 {
   "format": 1,
   "name": "LSW",
-  "description": "Broadcast-only remote (LS-Remote family). Packet captured from the original app, algorithm verified for codes 0-9.",
+  "description": "Broadcast-only remote 2 Motors (LS-Remote family)",
   "advertising": {
     "companyId": 255,
     "serviceUuids": ["ae8f"],

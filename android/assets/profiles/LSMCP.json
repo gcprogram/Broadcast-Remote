@@ -1,7 +1,7 @@
 {
   "format": 1,
   "name": "LS",
-  "description": "Broadcast-only Remote (LS). Packet captured from the original app, algorithm verified for codes 0-9.",
+  "description": "Broadcast-only 1 Remote (LS)",
   "advertising": {
     "companyId": 255,
     "serviceUuids": [
