@@ -20,12 +20,15 @@ AI assistant / MCP client ──stdio──► bridge (pc/broadcast_remote_bridg
 | Tool | Parameters | Result (text) |
 |---|---|---|
 | `status` | none | `Profile ZASJ047: off` or `Profile ZASJ047: active: code 0x05, auto-off in 120 s`; says if Bluetooth is off (then all send commands are refused) |
-| `buttons` | none | JSON list of the buttons of the active profile, in the order of the app |
+| `buttons` | none | JSON list of the buttons of the active profile, in the order of the app; with `example` (text) where the profile has one and `"macro": true` for a macro button |
+| `profiles` | none | JSON list of the profiles (remote controls) the app can emulate: `name`, `description`, `active`, `buttons` (count) |
+| `switch` | `profile` (name as listed by `profiles`, case does not matter) | `Profile video active, 12 buttons (see buttons).`; switches the device off first. `Error: ...` for an unknown name |
 | `send` | `code` (integer 0-255, or text such as `"0x11"`) | what was sent, for example `Code 0x05  ->  6d b6 43 ce 97 fe 42 7c e0 b8 2a  [mcp]`; repeated every second until another command or `off` |
 | `off` | none | `OFF ...`: sends the profile's off code for a short time, then stops advertising (or just stops, for a profile with a silent off) |
 
 Server instructions given to the client: *"Controls a BLE broadcast device through a profile. Call status first;
-always finish with off."*
+always finish with off. profiles lists the remote controls the app can emulate, switch selects one; buttons lists the
+buttons (and macros) of the active one."*
 
 ### How buttons are addressed
 
@@ -38,7 +41,16 @@ hex, plus the label if the profile defines one:
 
 The label is optional and only there for humans and assistants; it is not an address. A profile does not know what
 a function *does* (the receive-only device never says), so if you want an assistant to pick functions by meaning,
-give the buttons labels (app: *Menu → Edit buttons*, or `label` in the profile JSON).
+give the buttons labels (app: *Menu → Edit buttons*, or `label` in the profile JSON) and, optionally, an `example`
+text per button (tap the label in *Edit buttons*).
+
+A **macro** is a button of its own that presses several buttons one after another (for example *Input*, then *right
+arrow*, to select HDMI1). It appears in `buttons` like any other button (with `"macro": true`), has an unused code of its
+own and is started with `send` like the others; the app plays the steps and switches off at the end. Create macros in the
+app under *Menu → Edit buttons → New macro button*.
+
+Several remote controls can be emulated (one profile each). `profiles` lists them, `switch` selects one; afterwards
+`buttons` shows the buttons of the new profile.
 
 ### Safety behaviour
 

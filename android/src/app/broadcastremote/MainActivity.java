@@ -119,6 +119,8 @@ public class MainActivity extends Activity implements Controller.Listener {
             @Override public void run() {
                 long s = ctl.autoOffInSeconds();
                 autoInfo.setText(ctl.isOff() ? "" : "Auto-off in " + s + " s");
+                Profile now = ctl.profile();                // the remote control (MCP "switch") may have selected another profile
+                if (!(now == null ? "No profile" : now.name).contentEquals(profileName.getText())) rebuildGrid();
                 ticker.postDelayed(this, 1000);
             }
         });

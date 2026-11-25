@@ -62,11 +62,44 @@ public class RemoteService extends Service {
                         for (Profile.Btn b : p.buttons) {
                             JSONObject o = new JSONObject().put("code", b.code).put("hex", String.format("%02x", b.code));
                             if (!b.label.isEmpty()) o.put("label", b.label);
+                            if (!b.example.isEmpty()) o.put("example", b.example);
+                            if (b.isMacro()) o.put("macro", true);
                             a.put(o);
                         }
                     } catch (Exception ignored) {
                     }
                     return a;
+                }
+
+                @Override public JSONArray profiles() {
+                    JSONArray a = new JSONArray();
+                    String active = ProfileStore.activeName(RemoteService.this);
+                    for (String name : ProfileStore.list(RemoteService.this)) {
+                        try {
+                            JSONObject o = new JSONObject().put("name", name).put("active", name.equals(active));
+                            Profile p = ProfileStore.load(RemoteService.this, name);
+                            if (!p.description.isEmpty()) o.put("description", p.description);
+                            o.put("buttons", p.buttons.size());
+                            a.put(o);
+                        } catch (Exception ignored) {
+                            // a broken file is not listed
+                        }
+                    }
+                    return a;
+                }
+
+                @Override public String switchProfile(String wanted) {
+                    String match = null;
+                    for (String name : ProfileStore.list(RemoteService.this)) {
+                        if (name.equalsIgnoreCase(wanted)) match = name;
+                    }
+                    if (match == null) return "Error: no profile named '" + wanted + "' (see profiles)";
+                    if (match.equals(ProfileStore.activeName(RemoteService.this))) return "Profile " + match + " is already active.";
+                    ctl.sendSync(Controller.OFF, "mcp switch");                  // never keep sending a code of the old profile
+                    ProfileStore.setActive(RemoteService.this, match);
+                    Profile p = ctl.profile();
+                    return "Profile " + match + " active"
+                            + (p == null ? ", but it cannot be read." : ", " + p.buttons.size() + " buttons (see buttons).");
                 }
             });
             server.start();

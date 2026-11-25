@@ -6,14 +6,18 @@ import android.os.Bundle;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -48,8 +52,15 @@ public class EditActivity extends Activity {
 
         TextView help = new TextView(this);
         help.setText("Profile " + profile.name + ". Change the order with ▲ ▼, tap the icon to choose one, "
-                + "tap the label to rename it, ✕ removes a button.");
+                + "tap the label to rename it or to add an example text for assistants, ✕ removes a button. "
+                + "A macro is a button that presses several buttons one after another (e.g. Input, then right arrow).");
         root.addView(help);
+
+        Button newMacro = new Button(this);
+        newMacro.setAllCaps(false);
+        newMacro.setText("＋ New macro button");
+        newMacro.setOnClickListener(v -> editMacro(null));
+        root.addView(newMacro);
 
         LinearLayout add = new LinearLayout(this);
         add.setGravity(Gravity.CENTER_VERTICAL);
@@ -123,19 +134,42 @@ public class EditActivity extends Activity {
             row.addView(icon);
 
             TextView label = new TextView(this);
-            label.setText("  " + b.caption() + (b.label.isEmpty() ? "" : "  (" + String.format(Locale.ROOT, "%02x", b.code) + ")"));
+            label.setText("  " + (b.isMacro() ? "⚙ " : "") + b.caption()
+                    + (b.isMacro() ? "  (macro, " + b.macro.size() + (b.macro.size() == 1 ? " step)" : " steps)")
+                    : b.label.isEmpty() ? "" : "  (" + String.format(Locale.ROOT, "%02x", b.code) + ")")
+                    + (b.example.isEmpty() ? "" : "\n  " + b.example));
             label.setTextSize(20);
-            label.setOnClickListener(v -> rename(b));
+            label.setOnClickListener(v -> {
+                if (b.isMacro()) editMacro(b);
+                else rename(b);
+            });
             row.addView(label, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
 
             row.addView(small("▲", v -> move(pos, -1)));
             row.addView(small("▼", v -> move(pos, 1)));
-            row.addView(small("✕", v -> {
-                profile.buttons.remove(pos);
-                save();
-            }));
+            row.addView(small("✕", v -> removeButton(pos)));
             rows.addView(row);
         }
+    }
+
+    /** Removes a button; macro steps that pressed it go too, and a macro left without steps goes with them. */
+    private void removeButton(int pos) {
+        Profile.Btn gone = profile.buttons.remove(pos);
+        if (!gone.isMacro()) {
+            List<Profile.Btn> emptied = new ArrayList<>();
+            for (Profile.Btn m : profile.buttons) {
+                if (!m.isMacro()) continue;
+                List<Profile.Step> keep = new ArrayList<>();
+                for (Profile.Step s : m.macro) if (s.code != gone.code) keep.add(s);
+                if (keep.size() != m.macro.size()) {
+                    m.macro = keep;
+                    if (keep.isEmpty()) emptied.add(m);
+                }
+            }
+            profile.buttons.removeAll(emptied);
+            if (!emptied.isEmpty()) Toast.makeText(this, emptied.size() + " macro(s) removed (they only used this button)", Toast.LENGTH_LONG).show();
+        }
+        save();
     }
 
     private void move(int pos, int delta) {
@@ -146,18 +180,169 @@ public class EditActivity extends Activity {
     }
 
     private void rename(final Profile.Btn b) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(16), dp(8), dp(16), 0);
         final EditText input = new EditText(this);
         input.setHint("Label (empty = hex code)");
         input.setText(b.label);
+        box.addView(input);
+        final EditText example = new EditText(this);
+        example.setHint("Example / what it does (optional, shown to assistants)");
+        example.setText(b.example);
+        box.addView(example);
         new AlertDialog.Builder(this)
-                .setTitle("Label for " + String.format(Locale.ROOT, "%02x", b.code))
-                .setView(input)
+                .setTitle("Button " + String.format(Locale.ROOT, "%02x", b.code))
+                .setView(box)
                 .setPositiveButton("Apply", (d, w) -> {
                     b.label = input.getText().toString().trim();
+                    b.example = example.getText().toString().trim();
                     save();
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    /**
+     * Create (existing == null) or change a macro button: a name, an optional example and a list of steps
+     * (a plain button of the profile and how long it is sent). Played one after another, then off.
+     */
+    private void editMacro(final Profile.Btn existing) {
+        final List<Profile.Btn> plain = new ArrayList<>();
+        for (Profile.Btn x : profile.buttons) if (!x.isMacro()) plain.add(x);
+        if (plain.isEmpty()) {
+            Toast.makeText(this, "Please add plain buttons first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (existing == null && profile.freeCode() < 0) {
+            Toast.makeText(this, "No free code left", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final String[] names = new String[plain.size()];
+        for (int i = 0; i < names.length; i++) names[i] = plain.get(i).caption();
+
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(16), dp(8), dp(16), 0);
+        final EditText label = new EditText(this);
+        label.setHint("Name of the macro button (e.g. HDMI1)");
+        label.setText(existing == null ? "" : existing.label);
+        box.addView(label);
+        final EditText example = new EditText(this);
+        example.setHint("Example / what it does (optional)");
+        example.setText(existing == null ? "" : existing.example);
+        box.addView(example);
+        TextView head = new TextView(this);
+        head.setText("Steps: button and how many seconds it is sent. After the last step the device is switched off.");
+        head.setPadding(0, dp(12), 0, dp(4));
+        box.addView(head);
+
+        final LinearLayout stepRows = new LinearLayout(this);
+        stepRows.setOrientation(LinearLayout.VERTICAL);
+        box.addView(stepRows);
+        final List<Spinner> spinners = new ArrayList<>();
+        final List<EditText> holds = new ArrayList<>();
+
+        final Runnable[] addStepNow = new Runnable[1];
+        final int[] nextCode = {plain.get(0).code};
+        final int[] nextHold = {Profile.Step.DEFAULT_HOLD_MS};
+        addStepNow[0] = () -> {
+            final LinearLayout row = new LinearLayout(this);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            final Spinner sp = new Spinner(this);
+            sp.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, names));
+            for (int i = 0; i < plain.size(); i++) if (plain.get(i).code == nextCode[0]) sp.setSelection(i);
+            row.addView(sp, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+            final EditText hold = new EditText(this);
+            hold.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+            hold.setText(String.format(Locale.ROOT, "%.1f", nextHold[0] / 1000.0));
+            row.addView(hold, new LinearLayout.LayoutParams(dp(72), LinearLayout.LayoutParams.WRAP_CONTENT));
+            TextView unit = new TextView(this);
+            unit.setText(" s");
+            row.addView(unit);
+            row.addView(small("✕", v -> {
+                stepRows.removeView(row);
+                spinners.remove(sp);
+                holds.remove(hold);
+            }));
+            stepRows.addView(row);
+            spinners.add(sp);
+            holds.add(hold);
+        };
+        if (existing != null) {
+            for (Profile.Step s : existing.macro) {
+                nextCode[0] = s.code;
+                nextHold[0] = s.holdMs;
+                addStepNow[0].run();
+            }
+        }
+        nextCode[0] = plain.get(0).code;
+        nextHold[0] = Profile.Step.DEFAULT_HOLD_MS;
+        if (existing == null) addStepNow[0].run();
+
+        Button addStep = new Button(this);
+        addStep.setAllCaps(false);
+        addStep.setText("＋ Add step");
+        addStep.setOnClickListener(v -> {
+            if (spinners.size() >= Profile.Btn.MAX_STEPS) {
+                Toast.makeText(this, "At most " + Profile.Btn.MAX_STEPS + " steps", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            addStepNow[0].run();
+        });
+        box.addView(addStep);
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(box);
+        AlertDialog.Builder builder = new AlertDialog.Builder(this)
+                .setTitle(existing == null ? "New macro" : "Macro " + existing.caption())
+                .setView(scroll)
+                .setPositiveButton("Save", null)               // set below: stays open while the input is wrong
+                .setNegativeButton("Cancel", null);
+        if (existing != null) {
+            builder.setNeutralButton("Delete", (d, w) -> {
+                profile.buttons.remove(existing);
+                save();
+            });
+        }
+        final AlertDialog dialog = builder.create();
+        dialog.show();
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String name = label.getText().toString().trim();
+            if (name.isEmpty()) {
+                Toast.makeText(this, "Please give the macro a name", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (spinners.isEmpty()) {
+                Toast.makeText(this, "Please add at least one step", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            List<Profile.Step> steps = new ArrayList<>();
+            for (int i = 0; i < spinners.size(); i++) {
+                double seconds;
+                try {
+                    seconds = Double.parseDouble(holds.get(i).getText().toString().trim().replace(',', '.'));
+                } catch (NumberFormatException e) {
+                    seconds = -1;
+                }
+                int ms = (int) Math.round(seconds * 1000);
+                if (ms < Profile.Step.MIN_HOLD_MS || ms > Profile.Step.MAX_HOLD_MS) {
+                    Toast.makeText(this, "Step " + (i + 1) + ": 0.2 to 30 seconds", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                steps.add(new Profile.Step(plain.get(spinners.get(i).getSelectedItemPosition()).code, ms));
+            }
+            Profile.Btn target = existing;
+            if (target == null) {
+                target = new Profile.Btn(profile.freeCode(), "", "");
+                profile.buttons.add(target);
+            }
+            target.label = name;
+            target.example = example.getText().toString().trim();
+            target.macro = steps;
+            dialog.dismiss();
+            save();
+        });
     }
 
     private void pickIcon(final Profile.Btn b) {

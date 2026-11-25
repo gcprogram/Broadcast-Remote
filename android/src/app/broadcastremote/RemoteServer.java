@@ -34,6 +34,12 @@ final class RemoteServer {
         String status();
 
         JSONArray buttons();
+
+        /** The profiles of the app (name, description, active), as JSON. */
+        JSONArray profiles();
+
+        /** Makes the named profile the active one (switches off first). Text for the assistant, "Error: ..." if it does not exist. */
+        String switchProfile(String name);
     }
 
     private static final int MAX_HEADER = 16 * 1024;
@@ -52,8 +58,15 @@ final class RemoteServer {
             + "sends nothing back, so whether it reacted cannot be checked.\","
             + "\"inputSchema\":{\"type\":\"object\",\"properties\":{}}},"
             + "{\"name\":\"buttons\",\"description\":\"Lists the buttons of the active profile (code in decimal and hex, "
-            + "label, in the order of the app).\","
-            + "\"inputSchema\":{\"type\":\"object\",\"properties\":{}}}]";
+            + "label, optional example text, macro=true for a macro button, in the order of the app).\","
+            + "\"inputSchema\":{\"type\":\"object\",\"properties\":{}}},"
+            + "{\"name\":\"profiles\",\"description\":\"Lists the profiles (remote controls) the app can emulate: name, "
+            + "description, active. Use switch to select another one.\","
+            + "\"inputSchema\":{\"type\":\"object\",\"properties\":{}}},"
+            + "{\"name\":\"switch\",\"description\":\"Selects another profile by name (case does not matter). Switches the "
+            + "device off first; afterwards buttons lists the buttons of the new profile.\","
+            + "\"inputSchema\":{\"type\":\"object\",\"properties\":{\"profile\":{\"type\":\"string\","
+            + "\"description\":\"Profile name as listed by profiles\"}},\"required\":[\"profile\"]}}]";
 
     private final SSLContext ssl;
     private final int port;
@@ -211,9 +224,10 @@ final class RemoteServer {
                     result.put("protocolVersion",
                             params != null ? params.optString("protocolVersion", "2025-03-26") : "2025-03-26");
                     result.put("capabilities", new JSONObject().put("tools", new JSONObject().put("listChanged", false)));
-                    result.put("serverInfo", new JSONObject().put("name", "broadcast-remote").put("version", "1.0"));
+                    result.put("serverInfo", new JSONObject().put("name", "broadcast-remote").put("version", "1.1"));
                     result.put("instructions", "Controls a BLE broadcast device through a profile. Call status first; "
-                            + "always finish with off.");
+                            + "always finish with off. profiles lists the remote controls the app can emulate, "
+                            + "switch selects one; buttons lists the buttons (and macros) of the active one.");
                     break;
                 case "ping":
                     break;
@@ -257,6 +271,14 @@ final class RemoteServer {
             case "buttons":
                 text = api.buttons().toString();
                 break;
+            case "profiles":
+                text = api.profiles().toString();
+                break;
+            case "switch": {
+                String wanted = args == null ? "" : args.optString("profile", "").trim();
+                text = wanted.isEmpty() ? "Error: profile is missing (see profiles)" : api.switchProfile(wanted);
+                break;
+            }
             default:
                 text = "Error: unknown tool " + name;
         }

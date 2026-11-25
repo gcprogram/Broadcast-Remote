@@ -44,6 +44,7 @@ final class Controller {
     private final Context ctx;
     private final Handler timer = new Handler(Looper.getMainLooper());     // repeat, auto-off
     private final Handler commands = new Handler(Looper.getMainLooper());  // commands from other threads
+    private final Handler macroTimer = new Handler(Looper.getMainLooper()); // next step of a running macro
     private BluetoothLeAdvertiser advertiser;
     private AdvertiseCallback callback;
     private Listener listener;
@@ -107,6 +108,7 @@ final class Controller {
     void refreshBluetooth() {
         if (!bluetoothOn(ctx)) {
             timer.removeCallbacksAndMessages(null);
+            macroTimer.removeCallbacksAndMessages(null);
             advertiser = null;
             callback = null;
             active = OFF;
@@ -129,11 +131,21 @@ final class Controller {
         }
     }
 
-    /** Main thread only. OFF or the profile's off code = off (sent briefly), anything else is repeated. */
+    /**
+     * Main thread only. OFF or the profile's off code = off (sent briefly), anything else is repeated.
+     * The code of a macro button plays its steps (each step is sent for its hold time), then off. Every other command stops a macro.
+     */
     String send(int code, String source) {
+        return send(code, source, false);
+    }
+
+    private String send(int code, String source, boolean fromMacro) {
+        if (!fromMacro) macroTimer.removeCallbacksAndMessages(null);
         timer.removeCallbacksAndMessages(null);
         final Profile p = profile();
         if (p == null) return "Error: " + NO_PROFILE;
+        Profile.Btn macro = fromMacro ? null : p.button(code);
+        if (macro != null && macro.isMacro()) return playStep(p, macro, 0, source);
         BluetoothAdapter adapter = ctx.getSystemService(BluetoothManager.class).getAdapter();
         if (adapter == null || !adapter.isEnabled()) {
             refreshBluetooth();
@@ -175,6 +187,19 @@ final class Controller {
         }
         return report((off ? "OFF" : String.format("Code 0x%02x", code))
                 + "  ->  " + hexSpaced(packet) + "  [" + source + "]");
+    }
+
+    /** Sends step `index` of the macro now and schedules the next one (or off after the last). */
+    private String playStep(final Profile p, final Profile.Btn macro, final int index, final String source) {
+        Profile.Step step = macro.macro.get(index);
+        int total = macro.macro.size();
+        String result = send(step.code, "macro " + macro.caption() + " " + (index + 1) + "/" + total + " [" + source + "]", true);
+        if (result.startsWith("Error")) return result;   // fail() already stopped everything
+        macroTimer.postDelayed(() -> {
+            if (index + 1 < total) playStep(p, macro, index + 1, source);
+            else send(OFF, "macro " + macro.caption() + " done", true);
+        }, step.holdMs);
+        return result;
     }
 
     private final class Repeat implements Runnable {

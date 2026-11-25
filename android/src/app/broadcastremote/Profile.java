@@ -18,15 +18,38 @@ import java.util.TreeMap;
  * Read and written as JSON, see docs/PROFILE_FORMAT.md.
  */
 final class Profile {
+    /** One step of a macro: send this code of the profile for holdMs, then the next step. */
+    static final class Step {
+        static final int DEFAULT_HOLD_MS = 1000;
+        static final int MIN_HOLD_MS = 200;
+        static final int MAX_HOLD_MS = 30000;
+        int code;
+        int holdMs;
+
+        Step(int code, int holdMs) {
+            this.code = code;
+            this.holdMs = holdMs;
+        }
+    }
+
     static final class Btn {
+        static final int MAX_STEPS = 20;
         int code;
         String label;       // empty = show the hex code
         String icon;
+        String example;     // optional: what the button is good for (for people and assistants), shown by the MCP tool "buttons"
+        /** Not empty = macro: the code is only a name for it, nothing is sent for the code itself; the steps are played one after another. */
+        List<Step> macro = new ArrayList<>();
 
         Btn(int code, String label, String icon) {
             this.code = code;
             this.label = label == null ? "" : label;
             this.icon = icon == null ? "" : icon;
+            this.example = "";
+        }
+
+        boolean isMacro() {
+            return !macro.isEmpty();
         }
 
         String caption() {
@@ -75,8 +98,21 @@ final class Profile {
     }
 
     boolean hasButton(int code) {
-        for (Btn b : buttons) if (b.code == code) return true;
-        return false;
+        return button(code) != null;
+    }
+
+    /** The button with this code, null if there is none. */
+    Btn button(int code) {
+        for (Btn b : buttons) if (b.code == code) return b;
+        return null;
+    }
+
+    /** An unused code for a new macro button (counted down from 0xff, never the off code); -1 if every code is taken. */
+    int freeCode() {
+        for (int c = 255; c >= 0; c--) {
+            if (!hasButton(c) && (offSilent || c != offCode)) return c;
+        }
+        return -1;
     }
 
     // ---------------------------------------------------------------- read JSON
@@ -132,7 +168,31 @@ final class Profile {
                 JSONObject b = bs.getJSONObject(i);
                 int c = code(b.opt("code"), "buttons[" + i + "].code");
                 if (p.hasButton(c)) throw new IllegalArgumentException("Duplicate button: " + String.format("%02x", c));
-                p.buttons.add(new Btn(c, b.optString("label", ""), b.optString("icon", "")));
+                Btn btn = new Btn(c, b.optString("label", ""), b.optString("icon", ""));
+                btn.example = b.optString("example", "").trim();
+                JSONArray steps = b.optJSONArray("macro");
+                if (steps != null) {
+                    if (steps.length() > Btn.MAX_STEPS) throw new IllegalArgumentException("buttons[" + i + "].macro: at most " + Btn.MAX_STEPS + " steps");
+                    for (int s = 0; s < steps.length(); s++) {
+                        Object item = steps.get(s);
+                        String where = "buttons[" + i + "].macro[" + s + "]";
+                        if (item instanceof JSONObject) {
+                            JSONObject so = (JSONObject) item;
+                            btn.macro.add(new Step(code(so.opt("code"), where + ".code"), range(so.optInt("holdMs", Step.DEFAULT_HOLD_MS),
+                                    Step.MIN_HOLD_MS, Step.MAX_HOLD_MS, where + ".holdMs")));
+                        } else {
+                            btn.macro.add(new Step(code(item, where), Step.DEFAULT_HOLD_MS));
+                        }
+                    }
+                }
+                p.buttons.add(btn);
+            }
+            for (Btn b : p.buttons) {                           // a macro plays plain buttons only, no macros inside macros
+                for (Step s : b.macro) {
+                    Btn target = p.button(s.code);
+                    if (target == null) throw new IllegalArgumentException("Macro " + b.caption() + ": step " + String.format("%02x", s.code) + " is not a button");
+                    if (target.isMacro()) throw new IllegalArgumentException("Macro " + b.caption() + ": step " + target.caption() + " is itself a macro");
+                }
             }
         }
 
@@ -236,6 +296,14 @@ final class Profile {
                 JSONObject j = new JSONObject().put("code", String.format(Locale.ROOT, "%02x", b.code));
                 if (!b.label.isEmpty()) j.put("label", b.label);
                 if (!b.icon.isEmpty()) j.put("icon", b.icon);
+                if (!b.example.isEmpty()) j.put("example", b.example);
+                if (b.isMacro()) {
+                    JSONArray steps = new JSONArray();
+                    for (Step s : b.macro) {
+                        steps.put(new JSONObject().put("code", String.format(Locale.ROOT, "%02x", s.code)).put("holdMs", s.holdMs));
+                    }
+                    j.put("macro", steps);
+                }
                 bs.put(j);
             }
             o.put("buttons", bs);

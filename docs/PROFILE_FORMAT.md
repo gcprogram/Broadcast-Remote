@@ -67,7 +67,13 @@ you do not know (or do not need) the algorithm. A code without an entry cannot b
 - `off.code` is the code sent for **OFF** (default `00`); it is sent for `sendMs` and then advertising stops.
 - `off.silent: true` (instead of `code`): the original app sends no packet for *off*, it just stops. *Off* then only stops advertising.
 - `autoOffSeconds` (5-3600): no new command for this long → the app sends the off code by itself.
-- `buttons`: order = order on screen. `label` (optional) replaces the hex code, `icon` (optional) is one emoji.
+- `buttons`: order = order on screen. `label` (optional) replaces the hex code, `icon` (optional) is one emoji,
+  `example` (optional) is a short text of what the button does (shown to assistants by the MCP tool `buttons`).
+- **Macro button**: a button with `macro` is not sent itself, its `code` is only its name (the app picks an unused one, counted
+  down from `ff`). The steps are played one after another, then *off* is sent:
+  `{ "code": "fa", "label": "HDMI1", "macro": [ { "code": "11", "holdMs": 1000 }, { "code": "2a", "holdMs": 1000 } ] }`.
+  Each step is a plain button of the profile (no macro inside a macro) sent for `holdMs` (200-30000, default 1000), at most
+  20 steps. Any other command stops a running macro. In the app: *Menu → Edit buttons → New macro button* (no JSON needed).
 
 ## Learning a profile from captures
 
