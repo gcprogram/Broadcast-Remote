@@ -43,7 +43,7 @@ adb install -r broadcast-remote.apk
 ```
 
 `build.ps1` creates a debug keystore on first run (`android/debug.keystore`, not committed). Open the app, allow
-the Bluetooth permission, and you see the buttons of the built-in **ZASJ047** profile. Without a matching device
+the Bluetooth permission, and you see the buttons of the built-in **video** profile (for the ZASJ047 device). Without a matching device
 nothing happens, which is the point of the next sections: put your own device in via a profile.
 
 ## The screens

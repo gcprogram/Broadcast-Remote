@@ -6,7 +6,7 @@ Example: [android/assets/profiles/zasj047.json](../android/assets/profiles/zasj0
 ```json
 {
   "format": 1,
-  "name": "ZASJ047",
+  "name": "video",
   "description": "free text",
   "advertising": {
     "companyId": 255,

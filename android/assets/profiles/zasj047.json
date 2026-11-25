@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "name": "ZASJ047",
+  "name": "video",
   "description": "Broadcast-only remote (LS-Remote family). Packet captured from the original app, algorithm verified for codes 0-9.",
   "advertising": {
     "companyId": 255,

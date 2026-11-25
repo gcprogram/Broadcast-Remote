@@ -19,7 +19,7 @@ AI assistant / MCP client ──stdio──► bridge (pc/broadcast_remote_bridg
 
 | Tool | Parameters | Result (text) |
 |---|---|---|
-| `status` | none | `Profile ZASJ047: off` or `Profile ZASJ047: active: code 0x05, auto-off in 120 s`; says if Bluetooth is off (then all send commands are refused) |
+| `status` | none | `Profile video: off` or `Profile video: active: code 0x05, auto-off in 120 s`; says if Bluetooth is off (then all send commands are refused) |
 | `buttons` | none | JSON list of the buttons of the active profile, in the order of the app; with `example` (text) where the profile has one and `"macro": true` for a macro button |
 | `profiles` | none | JSON list of the profiles (remote controls) the app can emulate: `name`, `description`, `active`, `buttons` (count) |
 | `switch` | `profile` (name as listed by `profiles`, case does not matter) | `Profile video active, 12 buttons (see buttons).`; switches the device off first. `Error: ...` for an unknown name |
