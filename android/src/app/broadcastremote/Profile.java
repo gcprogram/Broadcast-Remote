@@ -18,17 +18,38 @@ import java.util.TreeMap;
  * Read and written as JSON, see docs/PROFILE_FORMAT.md.
  */
 final class Profile {
-    /** One step of a macro: send this code of the profile for holdMs, then the next step. */
+    /**
+     * One step of a macro: send this code of the profile for holdMs, then the next step.
+     * A pause (code PAUSE) sends nothing for holdMs (advertising is stopped, the device just gets no packet).
+     * An off step (code OFF) sends the profile's off code for holdMs (like the OFF button).
+     */
     static final class Step {
+        static final int PAUSE = -1;
+        static final int OFF = -2;
         static final int DEFAULT_HOLD_MS = 1000;
         static final int MIN_HOLD_MS = 200;
         static final int MAX_HOLD_MS = 30000;
+        static final int MIN_PAUSE_MS = 100;
+        static final int MAX_PAUSE_MS = 60000;
         int code;
         int holdMs;
 
         Step(int code, int holdMs) {
             this.code = code;
             this.holdMs = holdMs;
+        }
+
+        boolean isPause() {
+            return code == PAUSE;
+        }
+
+        boolean isOff() {
+            return code == OFF;
+        }
+
+        /** A step that presses a button of the profile (not a pause, not off). */
+        boolean isPress() {
+            return code >= 0;
         }
     }
 
@@ -50,6 +71,13 @@ final class Profile {
 
         boolean isMacro() {
             return !macro.isEmpty();
+        }
+
+        /** Number of steps that press a button (a macro made of pauses and off steps only does nothing). */
+        int pressSteps() {
+            int n = 0;
+            for (Step s : macro) if (s.isPress()) n++;
+            return n;
         }
 
         String caption() {
@@ -176,7 +204,13 @@ final class Profile {
                     for (int s = 0; s < steps.length(); s++) {
                         Object item = steps.get(s);
                         String where = "buttons[" + i + "].macro[" + s + "]";
-                        if (item instanceof JSONObject) {
+                        if (item instanceof JSONObject && ((JSONObject) item).has("offMs")) {
+                            btn.macro.add(new Step(Step.OFF, range(((JSONObject) item).optInt("offMs", -1),
+                                    Step.MIN_HOLD_MS, Step.MAX_HOLD_MS, where + ".offMs")));
+                        } else if (item instanceof JSONObject && ((JSONObject) item).has("pauseMs")) {
+                            btn.macro.add(new Step(Step.PAUSE, range(((JSONObject) item).optInt("pauseMs", -1),
+                                    Step.MIN_PAUSE_MS, Step.MAX_PAUSE_MS, where + ".pauseMs")));
+                        } else if (item instanceof JSONObject) {
                             JSONObject so = (JSONObject) item;
                             btn.macro.add(new Step(code(so.opt("code"), where + ".code"), range(so.optInt("holdMs", Step.DEFAULT_HOLD_MS),
                                     Step.MIN_HOLD_MS, Step.MAX_HOLD_MS, where + ".holdMs")));
@@ -188,7 +222,9 @@ final class Profile {
                 p.buttons.add(btn);
             }
             for (Btn b : p.buttons) {                           // a macro plays plain buttons only, no macros inside macros
+                if (b.isMacro() && b.pressSteps() == 0) throw new IllegalArgumentException("Macro " + b.caption() + " has only pauses");
                 for (Step s : b.macro) {
+                    if (!s.isPress()) continue;
                     Btn target = p.button(s.code);
                     if (target == null) throw new IllegalArgumentException("Macro " + b.caption() + ": step " + String.format("%02x", s.code) + " is not a button");
                     if (target.isMacro()) throw new IllegalArgumentException("Macro " + b.caption() + ": step " + target.caption() + " is itself a macro");
@@ -300,7 +336,9 @@ final class Profile {
                 if (b.isMacro()) {
                     JSONArray steps = new JSONArray();
                     for (Step s : b.macro) {
-                        steps.put(new JSONObject().put("code", String.format(Locale.ROOT, "%02x", s.code)).put("holdMs", s.holdMs));
+                        steps.put(s.isPause() ? new JSONObject().put("pauseMs", s.holdMs)
+                                : s.isOff() ? new JSONObject().put("offMs", s.holdMs)
+                                : new JSONObject().put("code", String.format(Locale.ROOT, "%02x", s.code)).put("holdMs", s.holdMs));
                     }
                     j.put("macro", steps);
                 }

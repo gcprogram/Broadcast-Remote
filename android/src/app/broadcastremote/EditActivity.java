@@ -163,7 +163,7 @@ public class EditActivity extends Activity {
                 for (Profile.Step s : m.macro) if (s.code != gone.code) keep.add(s);
                 if (keep.size() != m.macro.size()) {
                     m.macro = keep;
-                    if (keep.isEmpty()) emptied.add(m);
+                    if (m.pressSteps() == 0) emptied.add(m);   // only pauses left: nothing to play
                 }
             }
             profile.buttons.removeAll(emptied);
@@ -218,8 +218,10 @@ public class EditActivity extends Activity {
             Toast.makeText(this, "No free code left", Toast.LENGTH_SHORT).show();
             return;
         }
-        final String[] names = new String[plain.size()];
-        for (int i = 0; i < names.length; i++) names[i] = plain.get(i).caption();
+        final String[] names = new String[plain.size() + 2];        // entry 0 = pause, entry 1 = off, then the plain buttons
+        names[0] = "⏸ Pause (nothing is sent)";
+        names[1] = "⏻ Off (sends the off code)";
+        for (int i = 0; i < plain.size(); i++) names[i + 2] = plain.get(i).caption();
 
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
@@ -233,7 +235,8 @@ public class EditActivity extends Activity {
         example.setText(existing == null ? "" : existing.example);
         box.addView(example);
         TextView head = new TextView(this);
-        head.setText("Steps: button and how many seconds it is sent. After the last step the device is switched off.");
+        head.setText("Steps: a button and how many seconds it is sent, a pause (nothing is sent) or Off (the off code is sent) "
+                + "for the given time. After the last step the device is switched off.");
         head.setPadding(0, dp(12), 0, dp(4));
         box.addView(head);
 
@@ -251,7 +254,9 @@ public class EditActivity extends Activity {
             row.setGravity(Gravity.CENTER_VERTICAL);
             final Spinner sp = new Spinner(this);
             sp.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, names));
-            for (int i = 0; i < plain.size(); i++) if (plain.get(i).code == nextCode[0]) sp.setSelection(i);
+            if (nextCode[0] == Profile.Step.PAUSE) sp.setSelection(0);
+            else if (nextCode[0] == Profile.Step.OFF) sp.setSelection(1);
+            else for (int i = 0; i < plain.size(); i++) if (plain.get(i).code == nextCode[0]) sp.setSelection(i + 2);
             row.addView(sp, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
             final EditText hold = new EditText(this);
             hold.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
@@ -288,9 +293,26 @@ public class EditActivity extends Activity {
                 Toast.makeText(this, "At most " + Profile.Btn.MAX_STEPS + " steps", Toast.LENGTH_SHORT).show();
                 return;
             }
+            nextCode[0] = plain.get(0).code;
+            nextHold[0] = Profile.Step.DEFAULT_HOLD_MS;
             addStepNow[0].run();
         });
-        box.addView(addStep);
+        Button addPause = new Button(this);
+        addPause.setAllCaps(false);
+        addPause.setText("＋ Add pause");
+        addPause.setOnClickListener(v -> {
+            if (spinners.size() >= Profile.Btn.MAX_STEPS) {
+                Toast.makeText(this, "At most " + Profile.Btn.MAX_STEPS + " steps", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            nextCode[0] = Profile.Step.PAUSE;
+            nextHold[0] = Profile.Step.DEFAULT_HOLD_MS;
+            addStepNow[0].run();
+        });
+        LinearLayout addRow = new LinearLayout(this);
+        addRow.addView(addStep, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        addRow.addView(addPause, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        box.addView(addRow);
 
         ScrollView scroll = new ScrollView(this);
         scroll.addView(box);
@@ -313,8 +335,10 @@ public class EditActivity extends Activity {
                 Toast.makeText(this, "Please give the macro a name", Toast.LENGTH_SHORT).show();
                 return;
             }
-            if (spinners.isEmpty()) {
-                Toast.makeText(this, "Please add at least one step", Toast.LENGTH_SHORT).show();
+            boolean anyPress = false;
+            for (Spinner sp : spinners) if (sp.getSelectedItemPosition() > 1) anyPress = true;
+            if (!anyPress) {
+                Toast.makeText(this, "Please add at least one button step (not only pauses or off)", Toast.LENGTH_SHORT).show();
                 return;
             }
             List<Profile.Step> steps = new ArrayList<>();
@@ -326,11 +350,28 @@ public class EditActivity extends Activity {
                     seconds = -1;
                 }
                 int ms = (int) Math.round(seconds * 1000);
+                int pos = spinners.get(i).getSelectedItemPosition();
+                if (pos == 0) {
+                    if (ms < Profile.Step.MIN_PAUSE_MS || ms > Profile.Step.MAX_PAUSE_MS) {
+                        Toast.makeText(this, "Step " + (i + 1) + ": a pause is 0.1 to 60 seconds", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    steps.add(new Profile.Step(Profile.Step.PAUSE, ms));
+                    continue;
+                }
+                if (pos == 1) {
+                    if (ms < Profile.Step.MIN_HOLD_MS || ms > Profile.Step.MAX_HOLD_MS) {
+                        Toast.makeText(this, "Step " + (i + 1) + ": off is sent for 0.2 to 30 seconds", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    steps.add(new Profile.Step(Profile.Step.OFF, ms));
+                    continue;
+                }
                 if (ms < Profile.Step.MIN_HOLD_MS || ms > Profile.Step.MAX_HOLD_MS) {
                     Toast.makeText(this, "Step " + (i + 1) + ": 0.2 to 30 seconds", Toast.LENGTH_SHORT).show();
                     return;
                 }
-                steps.add(new Profile.Step(plain.get(spinners.get(i).getSelectedItemPosition()).code, ms));
+                steps.add(new Profile.Step(plain.get(pos - 2).code, ms));
             }
             Profile.Btn target = existing;
             if (target == null) {

@@ -73,7 +73,11 @@ you do not know (or do not need) the algorithm. A code without an entry cannot b
   down from `ff`). The steps are played one after another, then *off* is sent:
   `{ "code": "fa", "label": "HDMI1", "macro": [ { "code": "11", "holdMs": 1000 }, { "code": "2a", "holdMs": 1000 } ] }`.
   Each step is a plain button of the profile (no macro inside a macro) sent for `holdMs` (200-30000, default 1000), at most
-  20 steps. Any other command stops a running macro. In the app: *Menu → Edit buttons → New macro button* (no JSON needed).
+  20 steps. A **pause** is a step `{ "pauseMs": 2000 }` (100-60000): nothing is sent for that time (sending stops, the device
+  just gets no packet), then the next step follows. An **off step** `{ "offMs": 2000 }` (200-30000) sends the profile's off
+  code for that time, like the OFF button (a profile with a silent off just stops sending). A button step is not followed by
+  an off by itself: put an off step after it if the device must be switched off before the next step. A macro needs at least
+  one button step. Any other command stops a running macro. In the app: *Menu → Edit buttons → New macro button* (no JSON needed; "Add pause" adds a pause with its own time).
 
 ## Learning a profile from captures
 

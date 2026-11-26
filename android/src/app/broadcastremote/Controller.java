@@ -193,7 +193,19 @@ final class Controller {
     private String playStep(final Profile p, final Profile.Btn macro, final int index, final String source) {
         Profile.Step step = macro.macro.get(index);
         int total = macro.macro.size();
-        String result = send(step.code, "macro " + macro.caption() + " " + (index + 1) + "/" + total + " [" + source + "]", true);
+        String result;
+        if (step.isPause()) {
+            timer.removeCallbacksAndMessages(null);     // stop repeating the previous code: nothing is sent during a pause
+            stopAdvertising();
+            active = OFF;
+            autoOffAt = 0;
+            result = report(String.format(java.util.Locale.ROOT, "Macro %s %d/%d: pause %.1f s  [%s]",
+                    macro.caption(), index + 1, total, step.holdMs / 1000.0, source));
+        } else if (step.isOff()) {
+            result = send(OFF, "macro " + macro.caption() + " " + (index + 1) + "/" + total + " off [" + source + "]", true);
+        } else {
+            result = send(step.code, "macro " + macro.caption() + " " + (index + 1) + "/" + total + " [" + source + "]", true);
+        }
         if (result.startsWith("Error")) return result;   // fail() already stopped everything
         macroTimer.postDelayed(() -> {
             if (index + 1 < total) playStep(p, macro, index + 1, source);
