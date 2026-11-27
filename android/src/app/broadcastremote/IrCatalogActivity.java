@@ -35,6 +35,7 @@ public class IrCatalogActivity extends Activity {
     private TextView note;
     private EditText search;
     private Button findBrand;
+    private String findClass = "";                        // device type the manufacturer search runs in, e.g. "LED_Lighting/"
     private boolean busy;
 
     @Override
@@ -64,9 +65,8 @@ public class IrCatalogActivity extends Activity {
         row.addView(Ui.button(this, "Up", v -> up()));
         row.addView(Ui.button(this, "Reload list", v -> load(true)));
         root.addView(row);
-        findBrand = Ui.button(this, "Find the manufacturer by its power key", v -> startActivity(
-                new Intent(this, IrFindActivity.class).putExtra(IrFindActivity.EXTRA_CLASS, folder)));
-        findBrand.setAllCaps(false);
+        findBrand = Ui.wide(Ui.button(this, "Find the manufacturer by its power key", v -> startActivity(
+                new Intent(this, IrFindActivity.class).putExtra(IrFindActivity.EXTRA_CLASS, findClass))));
         findBrand.setVisibility(View.GONE);
         root.addView(findBrand);
 
@@ -144,9 +144,23 @@ public class IrCatalogActivity extends Activity {
             shown.addAll(IrCatalog.children(paths, folder));
             where.setText(folder.isEmpty() ? "All device types" : folder.substring(0, folder.length() - 1).replace("/", "  /  "));
         }
-        // offered inside a device type ("TVs/", "LED_Lighting/"), where the manufacturers are the folders
-        findBrand.setVisibility(query.length() < 2 && folder.indexOf('/') == folder.length() - 1 && !folder.isEmpty()
-                && !folder.startsWith("_") ? View.VISIBLE : View.GONE);
+        // offered inside a device type ("LED_Lighting/", also in a manufacturer folder of it) and for search results of one device type
+        findClass = "";
+        if (query.length() >= 2) {
+            for (IrCatalog.Item i : shown) {
+                String c = i.path.substring(0, i.path.indexOf('/') + 1);
+                if (c.isEmpty()) continue;
+                if (findClass.isEmpty()) findClass = c;
+                else if (!findClass.equals(c)) {
+                    findClass = "";
+                    break;
+                }
+            }
+        } else if (folder.indexOf('/') > 0) {
+            findClass = folder.substring(0, folder.indexOf('/') + 1);
+        }
+        findBrand.setVisibility(!findClass.isEmpty() && !findClass.startsWith("_") ? View.VISIBLE : View.GONE);
+        if (!findClass.isEmpty()) findBrand.setText("Find the manufacturer by its power key (" + findClass.replace("/", "").replace('_', ' ') + ")");
         List<String> labels = new ArrayList<>();
         for (IrCatalog.Item i : shown) labels.add(i.folder ? "📁  " + i.label : i.label);
         adapter.clear();
