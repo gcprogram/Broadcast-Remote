@@ -6,7 +6,9 @@ import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
+import android.content.Intent;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -22,6 +24,7 @@ import java.util.List;
  * profile. The list of remotes is loaded once from the Flipper-IRDB and kept; only the picked file is downloaded.
  */
 public class IrCatalogActivity extends Activity {
+    static final String EXTRA_FOLDER = "folder";            // open in this folder, for example "LED_Lighting/Airivo/"
     private static final int SEARCH_LIMIT = 300;
 
     private List<String> paths = new ArrayList<>();
@@ -31,6 +34,7 @@ public class IrCatalogActivity extends Activity {
     private TextView where;
     private TextView note;
     private EditText search;
+    private Button findBrand;
     private boolean busy;
 
     @Override
@@ -60,6 +64,11 @@ public class IrCatalogActivity extends Activity {
         row.addView(Ui.button(this, "Up", v -> up()));
         row.addView(Ui.button(this, "Reload list", v -> load(true)));
         root.addView(row);
+        findBrand = Ui.button(this, "Find the manufacturer by its power key", v -> startActivity(
+                new Intent(this, IrFindActivity.class).putExtra(IrFindActivity.EXTRA_CLASS, folder)));
+        findBrand.setAllCaps(false);
+        findBrand.setVisibility(View.GONE);
+        root.addView(findBrand);
 
         where = new TextView(this);
         where.setTextSize(15);
@@ -79,6 +88,8 @@ public class IrCatalogActivity extends Activity {
         if (!Controller.irAvailable(this)) {
             Toast.makeText(this, "This phone has no infrared emitter: you can add remotes, but not send with them.", Toast.LENGTH_LONG).show();
         }
+        String start = getIntent().getStringExtra(EXTRA_FOLDER);
+        if (start != null) folder = start;
         load(false);
     }
 
@@ -133,6 +144,9 @@ public class IrCatalogActivity extends Activity {
             shown.addAll(IrCatalog.children(paths, folder));
             where.setText(folder.isEmpty() ? "All device types" : folder.substring(0, folder.length() - 1).replace("/", "  /  "));
         }
+        // offered inside a device type ("TVs/", "LED_Lighting/"), where the manufacturers are the folders
+        findBrand.setVisibility(query.length() < 2 && folder.indexOf('/') == folder.length() - 1 && !folder.isEmpty()
+                && !folder.startsWith("_") ? View.VISIBLE : View.GONE);
         List<String> labels = new ArrayList<>();
         for (IrCatalog.Item i : shown) labels.add(i.folder ? "📁  " + i.label : i.label);
         adapter.clear();

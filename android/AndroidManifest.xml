@@ -40,6 +40,8 @@
         <activity android:name=".IrCatalogActivity" android:exported="false"
             android:label="Infrared remotes" android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustResize" />
+        <activity android:name=".IrFindActivity" android:exported="false"
+            android:label="Find manufacturer" android:screenOrientation="portrait" />
         <activity android:name=".ProfileEditorActivity" android:exported="false"
             android:label="Edit profile" android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustResize" />

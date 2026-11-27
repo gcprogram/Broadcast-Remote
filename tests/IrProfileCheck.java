@@ -74,6 +74,16 @@ public class IrProfileCheck {
         check(IrCatalog.defaultName("TVs/Sony/RM-PJ30/ID-1.ir").equals("Sony RM-PJ30 ID-1 (IR)"), "name " + IrCatalog.defaultName("TVs/Sony/RM-PJ30/ID-1.ir"));
         check(IrCatalog.defaultName("_Converted_/CSV/A/ABIT/DVD_WINDVD/1_-1.ir").equals("ABIT DVD WINDVD 1 -1 (IR)"), "name " + IrCatalog.defaultName("_Converted_/CSV/A/ABIT/DVD_WINDVD/1_-1.ir"));
 
+        // manufacturer search: the power key of a remote
+        List<FlipperIr.Entry> keys = FlipperIr.parse("name: Vol up\ntype: parsed\nprotocol: NEC\naddress: 00 00 00 00\ncommand: 45 00 00 00\n#\n"
+                + "name: Power_On\ntype: parsed\nprotocol: NEC\naddress: 00 00 00 00\ncommand: 01 00 00 00\n#\n"
+                + "name: ON/OFF\ntype: parsed\nprotocol: NEC\naddress: 00 00 00 00\ncommand: 02 00 00 00\n#\n");
+        check(IrCatalog.findPower(keys).name.equals("ON/OFF"), "toggle preferred");
+        check(IrCatalog.findPower(keys.subList(0, 2)).name.equals("Power_On"), "plain on key");
+        check(IrCatalog.findPower(keys.subList(0, 1)) == null, "no power key");
+        List<String> led = new ArrayList<>(Arrays.asList("LED_Lighting/Airivo/A.ir", "LED_Lighting/Airivo/B.ir", "LED_Lighting/Zed/Z.ir", "LED_Lighting/Top.ir", "TVs/Sony/S.ir"));
+        check(IrCatalog.manufacturers(led, "LED_Lighting/").size() == 2 && IrCatalog.filesBelow(led, "LED_Lighting/Airivo/").size() == 2, "manufacturers");
+
         // the real tree answer of the GitHub API, if given
         if (args.length > 0) {
             String tree = new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(args[0])), "UTF-8");

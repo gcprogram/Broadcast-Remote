@@ -86,6 +86,7 @@ phones with an IR emitter (`ConsumerIrManager`, permission `TRANSMIT_IR`; check 
 - *Menu → Find infrared remote (catalog)*: the list of remotes (file names only, 370 KB) is loaded once from GitHub and kept; browse by device
   type and manufacturer or search ("samsung tv"); only the remote you pick is downloaded (a few KB), converted on the phone and saved as a profile.
   The app needs `INTERNET` for this (it has it already for the remote control server); nothing about you is sent.
+- **Do not know the manufacturer?** Open a device type (for example *LED_Lighting*) and tap *Find the manufacturer by its power key*: the app sends the power key (Power, On_Off, ...) of one remote of every manufacturer, one after the other (by hand or automatically every 2-5 seconds) and shows the manufacturer. When the device reacts, tap *It reacted* and try the remotes of that manufacturer. Usually a manufacturer codes the power key the same way in all its devices, but that is not guaranteed.
 - Protocols: NEC, NECext, Samsung32, RC5, RC5X, RC6 (mode 0), Sony SIRC (12/15/20 bit), RCA and **raw** pulse lists. Buttons of other protocols
   (for example Panasonic Kaseikyo) are skipped and counted in the summary before you add the remote. About 96% of the buttons of TVs, lamps,
   projectors, sound bars and air conditioners of the catalog are usable.

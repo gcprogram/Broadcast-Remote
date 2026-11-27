@@ -185,6 +185,55 @@ final class IrCatalog {
         return String.join(" ", parts) + " (IR)";
     }
 
+    // ------------------------------------------------------------------ manufacturer search
+
+    /** The manufacturer folders of a device type ("LED_Lighting/"), for example "LED_Lighting/Airivo/". */
+    static List<Item> manufacturers(List<String> paths, String classFolder) {
+        List<Item> out = new ArrayList<>();
+        for (Item i : children(paths, classFolder)) if (i.folder) out.add(i);
+        return out;
+    }
+
+    /** The paths of all files below a folder, in catalog order. */
+    static List<String> filesBelow(List<String> paths, String folder) {
+        List<String> out = new ArrayList<>();
+        for (String p : paths) if (p.startsWith(folder)) out.add(p);
+        return out;
+    }
+
+    /**
+     * The "power" key of a remote: a toggle (Power, On_Off, Power_Toggle...) first, then a plain "on" key; null if the file has
+     * none that this app can send. Almost every device has one, and the same manufacturer mostly codes it the same way.
+     */
+    static FlipperIr.Entry findPower(List<FlipperIr.Entry> entries) {
+        FlipperIr.Entry best = null;
+        int bestRank = Integer.MAX_VALUE;
+        for (FlipperIr.Entry e : entries) {
+            if (e.ir == null) continue;
+            int rank = powerRank(e.name.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", ""));
+            if (rank < bestRank) {
+                bestRank = rank;
+                best = e;
+            }
+        }
+        return best;
+    }
+
+    private static int powerRank(String n) {
+        switch (n) {
+            case "power": case "pwr": case "onoff": case "poweronoff": case "powertoggle": case "powerbutton": case "ontoggle":
+            case "standby": case "onoffbutton": case "offon":
+                return 0;
+            case "poweron": case "on": case "lighton": case "lightson": case "ledon": case "turnon": case "pwron": case "switchon":
+                return 1;
+            default:
+                break;
+        }
+        if (n.contains("power") && !n.contains("off") && !n.contains("up") && !n.contains("down")) return 2;
+        if (n.contains("onoff")) return 2;
+        return Integer.MAX_VALUE;
+    }
+
     // ------------------------------------------------------------------ profile
 
     /** What became of a downloaded file. */
