@@ -2,10 +2,20 @@ package app.broadcastremote;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.text.Editable;
 import android.text.InputType;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.TextWatcher;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.RelativeSizeSpan;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.WindowManager;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -133,17 +143,26 @@ public class EditActivity extends Activity {
             icon.setOnClickListener(v -> pickIcon(b));
             row.addView(icon);
 
+            LinearLayout texts = new LinearLayout(this);
+            texts.setOrientation(LinearLayout.VERTICAL);
+            texts.setPadding(dp(10), 0, dp(4), 0);
             TextView label = new TextView(this);
-            label.setText("  " + (b.isMacro() ? "⚙ " : "") + b.caption()
-                    + (b.isMacro() ? "  (macro, " + b.macro.size() + (b.macro.size() == 1 ? " step)" : " steps)")
-                    : b.label.isEmpty() ? "" : "  (" + String.format(Locale.ROOT, "%02x", b.code) + ")")
-                    + (b.example.isEmpty() ? "" : "\n  " + b.example));
-            label.setTextSize(20);
-            label.setOnClickListener(v -> {
+            label.setText((b.isMacro() ? "⚙ " : "") + b.caption()
+                    + (!b.isMacro() && !b.label.isEmpty() ? "  (" + String.format(Locale.ROOT, "%02x", b.code) + ")" : ""));
+            label.setTextSize(16);
+            texts.addView(label);
+            if (!b.example.isEmpty()) {
+                TextView ex = new TextView(this);
+                ex.setText(b.example);
+                ex.setTextSize(11);
+                ex.setTextColor(0xFF888888);
+                texts.addView(ex);
+            }
+            texts.setOnClickListener(v -> {
                 if (b.isMacro()) editMacro(b);
                 else rename(b);
             });
-            row.addView(label, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+            row.addView(texts, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
 
             row.addView(small("▲", v -> move(pos, -1)));
             row.addView(small("▼", v -> move(pos, 1)));
@@ -205,7 +224,8 @@ public class EditActivity extends Activity {
 
     /**
      * Create (existing == null) or change a macro button: a name, an optional example and a list of steps
-     * (a plain button of the profile and how long it is sent). Played one after another, then off.
+     * (a plain button of the profile, a pause or off, and how long). Played one after another, then off.
+     * An overview of the steps (with their seconds) is on top; below it the one tapped step is edited, moved or removed.
      */
     private void editMacro(final Profile.Btn existing) {
         final List<Profile.Btn> plain = new ArrayList<>();
@@ -219,100 +239,187 @@ public class EditActivity extends Activity {
             return;
         }
         final String[] names = new String[plain.size() + 2];        // entry 0 = pause, entry 1 = off, then the plain buttons
-        names[0] = "⏸ Pause (nothing is sent)";
-        names[1] = "⏻ Off (sends the off code)";
+        names[0] = "⏸ Pause";
+        names[1] = "⏻ Off";
         for (int i = 0; i < plain.size(); i++) names[i + 2] = plain.get(i).caption();
+
+        final List<Profile.Step> steps = new ArrayList<>();           // working copy, edited live
+        if (existing != null) {
+            for (Profile.Step s : existing.macro) steps.add(new Profile.Step(s.code, s.holdMs));
+        } else {
+            steps.add(new Profile.Step(plain.get(0).code, Profile.Step.DEFAULT_HOLD_MS));
+        }
+        final int[] cur = {0};                                        // the step being edited
+        final boolean[] binding = {false};                            // true while the editor is filled from the step
+        final boolean[] typing = {false};                             // true while the seconds are typed (the field is not rewritten)
 
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(16), dp(8), dp(16), 0);
+        box.setPadding(dp(20), dp(8), dp(20), dp(4));
         final EditText label = new EditText(this);
         label.setHint("Name of the macro button (e.g. HDMI1)");
+        label.setTextSize(15);
+        label.setSingleLine(true);
         label.setText(existing == null ? "" : existing.label);
         box.addView(label);
         final EditText example = new EditText(this);
         example.setHint("Example / what it does (optional)");
+        example.setTextSize(12);
         example.setText(existing == null ? "" : existing.example);
         box.addView(example);
+
         TextView head = new TextView(this);
-        head.setText("Steps: a button and how many seconds it is sent, a pause (nothing is sent) or Off (the off code is sent) "
-                + "for the given time. After the last step the device is switched off.");
-        head.setPadding(0, dp(12), 0, dp(4));
+        head.setText("Tap a step to change it. After the last step the device is switched off.");
+        head.setTextSize(11);
+        head.setPadding(0, dp(10), 0, dp(4));
         box.addView(head);
 
-        final LinearLayout stepRows = new LinearLayout(this);
-        stepRows.setOrientation(LinearLayout.VERTICAL);
-        box.addView(stepRows);
-        final List<Spinner> spinners = new ArrayList<>();
-        final List<EditText> holds = new ArrayList<>();
+        final FlowLayout chips = new FlowLayout(this, dp(6));
+        CappedScrollView chipScroll = new CappedScrollView(this, dp(150));
+        chipScroll.addView(chips);
+        box.addView(chipScroll);
 
-        final Runnable[] addStepNow = new Runnable[1];
-        final int[] nextCode = {plain.get(0).code};
-        final int[] nextHold = {Profile.Step.DEFAULT_HOLD_MS};
-        addStepNow[0] = () -> {
-            final LinearLayout row = new LinearLayout(this);
-            row.setGravity(Gravity.CENTER_VERTICAL);
-            final Spinner sp = new Spinner(this);
-            sp.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, names));
-            if (nextCode[0] == Profile.Step.PAUSE) sp.setSelection(0);
-            else if (nextCode[0] == Profile.Step.OFF) sp.setSelection(1);
-            else for (int i = 0; i < plain.size(); i++) if (plain.get(i).code == nextCode[0]) sp.setSelection(i + 2);
-            row.addView(sp, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-            final EditText hold = new EditText(this);
-            hold.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-            hold.setText(String.format(Locale.ROOT, "%.1f", nextHold[0] / 1000.0));
-            row.addView(hold, new LinearLayout.LayoutParams(dp(72), LinearLayout.LayoutParams.WRAP_CONTENT));
-            TextView unit = new TextView(this);
-            unit.setText(" s");
-            row.addView(unit);
-            row.addView(small("✕", v -> {
-                stepRows.removeView(row);
-                spinners.remove(sp);
-                holds.remove(hold);
-            }));
-            stepRows.addView(row);
-            spinners.add(sp);
-            holds.add(hold);
+        final TextView title = new TextView(this);
+        title.setTextSize(12);
+        title.setPadding(0, dp(12), 0, 0);
+        box.addView(title);
+
+        LinearLayout editRow = new LinearLayout(this);
+        editRow.setGravity(Gravity.CENTER_VERTICAL);
+        final Spinner sp = new Spinner(this);
+        sp.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, names));
+        editRow.addView(sp, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        final EditText hold = new EditText(this);
+        hold.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        hold.setTextSize(15);
+        hold.setSingleLine(true);
+        editRow.addView(hold, new LinearLayout.LayoutParams(dp(64), LinearLayout.LayoutParams.WRAP_CONTENT));
+        TextView unit = new TextView(this);
+        unit.setText(" s");
+        editRow.addView(unit);
+        box.addView(editRow);
+
+        final Runnable[] refresh = new Runnable[1];
+
+        refresh[0] = () -> {
+            chips.removeAllViews();
+            for (int i = 0; i < steps.size(); i++) {
+                final int index = i;
+                Profile.Step s = steps.get(i);
+                String name = s.code == Profile.Step.PAUSE ? names[0] : s.code == Profile.Step.OFF ? names[1] : stepName(plain, s.code);
+                String secs = s.holdMs <= 0 ? "?" : String.format(Locale.ROOT, "%.1f s", s.holdMs / 1000.0);
+                SpannableString text = new SpannableString(name + "\n" + secs);
+                text.setSpan(new RelativeSizeSpan(0.75f), name.length() + 1, text.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                text.setSpan(new ForegroundColorSpan(0xFF888888), name.length() + 1, text.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                TextView chip = new TextView(this);
+                chip.setText(text);
+                chip.setTextSize(14);
+                chip.setGravity(Gravity.CENTER);
+                chip.setPadding(dp(12), dp(4), dp(12), dp(4));
+                GradientDrawable shape = new GradientDrawable();
+                shape.setCornerRadius(dp(18));
+                shape.setColor(index == cur[0] ? 0x554488CC : 0x22888888);
+                shape.setStroke(index == cur[0] ? dp(2) : dp(1), index == cur[0] ? 0xFF4488CC : 0xFF888888);
+                chip.setBackground(shape);
+                chip.setOnClickListener(v -> {
+                    cur[0] = index;
+                    refresh[0].run();
+                });
+                chips.addView(chip);
+            }
+            // fill the editor from the current step
+            Profile.Step s = steps.get(cur[0]);
+            binding[0] = true;
+            title.setText("Step " + (cur[0] + 1) + " of " + steps.size());
+            if (s.code == Profile.Step.PAUSE) sp.setSelection(0);
+            else if (s.code == Profile.Step.OFF) sp.setSelection(1);
+            else for (int i = 0; i < plain.size(); i++) if (plain.get(i).code == s.code) sp.setSelection(i + 2);
+            String shown = s.holdMs <= 0 ? "" : String.format(Locale.ROOT, "%.1f", s.holdMs / 1000.0);
+            if (!typing[0]) hold.setText(shown);
+            binding[0] = false;
         };
-        if (existing != null) {
-            for (Profile.Step s : existing.macro) {
-                nextCode[0] = s.code;
-                nextHold[0] = s.holdMs;
-                addStepNow[0].run();
-            }
-        }
-        nextCode[0] = plain.get(0).code;
-        nextHold[0] = Profile.Step.DEFAULT_HOLD_MS;
-        if (existing == null) addStepNow[0].run();
 
-        Button addStep = new Button(this);
-        addStep.setAllCaps(false);
-        addStep.setText("＋ Add step");
-        addStep.setOnClickListener(v -> {
-            if (spinners.size() >= Profile.Btn.MAX_STEPS) {
-                Toast.makeText(this, "At most " + Profile.Btn.MAX_STEPS + " steps", Toast.LENGTH_SHORT).show();
+        sp.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (binding[0]) return;
+                int code = position == 0 ? Profile.Step.PAUSE : position == 1 ? Profile.Step.OFF : plain.get(position - 2).code;
+                if (steps.get(cur[0]).code == code) return;
+                steps.get(cur[0]).code = code;
+                refresh[0].run();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+            }
+        });
+        hold.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) { }
+            @Override public void onTextChanged(CharSequence s, int a, int b, int c) { }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                if (binding[0]) return;
+                int ms;
+                try {
+                    ms = (int) Math.round(Double.parseDouble(s.toString().trim().replace(',', '.')) * 1000);
+                } catch (NumberFormatException e) {
+                    ms = -1;                                           // refused when saving
+                }
+                steps.get(cur[0]).holdMs = ms;
+                typing[0] = true;                                      // update the chip, but leave the field alone
+                refresh[0].run();
+                typing[0] = false;
+            }
+        });
+
+        LinearLayout moveRow = new LinearLayout(this);
+        moveRow.addView(stepButton("◀", v -> {
+            int i = cur[0];
+            if (i == 0) return;
+            Collections.swap(steps, i, i - 1);
+            cur[0] = i - 1;
+            refresh[0].run();
+        }));
+        moveRow.addView(stepButton("▶", v -> {
+            int i = cur[0];
+            if (i >= steps.size() - 1) return;
+            Collections.swap(steps, i, i + 1);
+            cur[0] = i + 1;
+            refresh[0].run();
+        }));
+        moveRow.addView(stepButton("✕ Remove", v -> {
+            if (steps.size() == 1) {
+                Toast.makeText(this, "A macro needs at least one step", Toast.LENGTH_SHORT).show();
                 return;
             }
-            nextCode[0] = plain.get(0).code;
-            nextHold[0] = Profile.Step.DEFAULT_HOLD_MS;
-            addStepNow[0].run();
-        });
-        Button addPause = new Button(this);
-        addPause.setAllCaps(false);
-        addPause.setText("＋ Add pause");
-        addPause.setOnClickListener(v -> {
-            if (spinners.size() >= Profile.Btn.MAX_STEPS) {
-                Toast.makeText(this, "At most " + Profile.Btn.MAX_STEPS + " steps", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            nextCode[0] = Profile.Step.PAUSE;
-            nextHold[0] = Profile.Step.DEFAULT_HOLD_MS;
-            addStepNow[0].run();
-        });
+            steps.remove(cur[0]);
+            if (cur[0] >= steps.size()) cur[0] = steps.size() - 1;
+            refresh[0].run();
+        }));
+        box.addView(moveRow);
+
         LinearLayout addRow = new LinearLayout(this);
-        addRow.addView(addStep, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-        addRow.addView(addPause, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        addRow.addView(stepButton("＋ Step after", v -> {
+            if (steps.size() >= Profile.Btn.MAX_STEPS) {
+                Toast.makeText(this, "At most " + Profile.Btn.MAX_STEPS + " steps", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            steps.add(cur[0] + 1, new Profile.Step(plain.get(0).code, Profile.Step.DEFAULT_HOLD_MS));
+            cur[0]++;
+            refresh[0].run();
+        }));
+        addRow.addView(stepButton("＋ Pause after", v -> {
+            if (steps.size() >= Profile.Btn.MAX_STEPS) {
+                Toast.makeText(this, "At most " + Profile.Btn.MAX_STEPS + " steps", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            steps.add(cur[0] + 1, new Profile.Step(Profile.Step.PAUSE, Profile.Step.DEFAULT_HOLD_MS));
+            cur[0]++;
+            refresh[0].run();
+        }));
         box.addView(addRow);
+        refresh[0].run();
 
         ScrollView scroll = new ScrollView(this);
         scroll.addView(box);
@@ -328,6 +435,9 @@ public class EditActivity extends Activity {
             });
         }
         final AlertDialog dialog = builder.create();
+        // the keyboard shrinks the dialog instead of covering it
+        dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+                | WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN);
         dialog.show();
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String name = label.getText().toString().trim();
@@ -336,42 +446,22 @@ public class EditActivity extends Activity {
                 return;
             }
             boolean anyPress = false;
-            for (Spinner sp : spinners) if (sp.getSelectedItemPosition() > 1) anyPress = true;
+            for (Profile.Step s : steps) if (s.code >= 0) anyPress = true;
             if (!anyPress) {
                 Toast.makeText(this, "Please add at least one button step (not only pauses or off)", Toast.LENGTH_SHORT).show();
                 return;
             }
-            List<Profile.Step> steps = new ArrayList<>();
-            for (int i = 0; i < spinners.size(); i++) {
-                double seconds;
-                try {
-                    seconds = Double.parseDouble(holds.get(i).getText().toString().trim().replace(',', '.'));
-                } catch (NumberFormatException e) {
-                    seconds = -1;
-                }
-                int ms = (int) Math.round(seconds * 1000);
-                int pos = spinners.get(i).getSelectedItemPosition();
-                if (pos == 0) {
-                    if (ms < Profile.Step.MIN_PAUSE_MS || ms > Profile.Step.MAX_PAUSE_MS) {
-                        Toast.makeText(this, "Step " + (i + 1) + ": a pause is 0.1 to 60 seconds", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    steps.add(new Profile.Step(Profile.Step.PAUSE, ms));
-                    continue;
-                }
-                if (pos == 1) {
-                    if (ms < Profile.Step.MIN_HOLD_MS || ms > Profile.Step.MAX_HOLD_MS) {
-                        Toast.makeText(this, "Step " + (i + 1) + ": off is sent for 0.2 to 30 seconds", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    steps.add(new Profile.Step(Profile.Step.OFF, ms));
-                    continue;
-                }
-                if (ms < Profile.Step.MIN_HOLD_MS || ms > Profile.Step.MAX_HOLD_MS) {
-                    Toast.makeText(this, "Step " + (i + 1) + ": 0.2 to 30 seconds", Toast.LENGTH_SHORT).show();
+            for (int i = 0; i < steps.size(); i++) {
+                Profile.Step s = steps.get(i);
+                int min = s.code == Profile.Step.PAUSE ? Profile.Step.MIN_PAUSE_MS : Profile.Step.MIN_HOLD_MS;
+                int max = s.code == Profile.Step.PAUSE ? Profile.Step.MAX_PAUSE_MS : Profile.Step.MAX_HOLD_MS;
+                if (s.holdMs < min || s.holdMs > max) {
+                    cur[0] = i;
+                    refresh[0].run();
+                    Toast.makeText(this, "Step " + (i + 1) + ": " + (s.code == Profile.Step.PAUSE ? "a pause is 0.1 to 60 seconds"
+                            : s.code == Profile.Step.OFF ? "off is sent for 0.2 to 30 seconds" : "0.2 to 30 seconds"), Toast.LENGTH_SHORT).show();
                     return;
                 }
-                steps.add(new Profile.Step(plain.get(pos - 2).code, ms));
             }
             Profile.Btn target = existing;
             if (target == null) {
@@ -380,10 +470,88 @@ public class EditActivity extends Activity {
             }
             target.label = name;
             target.example = example.getText().toString().trim();
-            target.macro = steps;
+            target.macro = new ArrayList<>(steps);
             dialog.dismiss();
             save();
         });
+    }
+
+    private static String stepName(List<Profile.Btn> plain, int code) {
+        for (Profile.Btn b : plain) if (b.code == code) return b.caption();
+        return String.format(Locale.ROOT, "%02x", code);
+    }
+
+    private Button stepButton(String text, View.OnClickListener l) {
+        Button b = new Button(this);
+        b.setAllCaps(false);
+        b.setText(text);
+        b.setTextSize(13);
+        b.setOnClickListener(l);
+        b.setLayoutParams(new LinearLayout.LayoutParams(0, dp(46), 1));
+        b.setPadding(dp(4), 0, dp(4), 0);
+        return b;
+    }
+
+    /** Puts its children side by side and wraps to the next line when the row is full. */
+    private static final class FlowLayout extends ViewGroup {
+        private final int gap;
+
+        FlowLayout(android.content.Context c, int gap) {
+            super(c);
+            this.gap = gap;
+        }
+
+        @Override
+        protected void onMeasure(int widthSpec, int heightSpec) {
+            int maxW = MeasureSpec.getSize(widthSpec) - getPaddingLeft() - getPaddingRight();
+            int x = 0, y = 0, rowH = 0;
+            for (int i = 0; i < getChildCount(); i++) {
+                View ch = getChildAt(i);
+                ch.measure(MeasureSpec.makeMeasureSpec(maxW, MeasureSpec.AT_MOST), MeasureSpec.UNSPECIFIED);
+                int w = ch.getMeasuredWidth(), h = ch.getMeasuredHeight();
+                if (x > 0 && x + w > maxW) {
+                    x = 0;
+                    y += rowH + gap;
+                    rowH = 0;
+                }
+                x += w + gap;
+                rowH = Math.max(rowH, h);
+            }
+            setMeasuredDimension(MeasureSpec.getSize(widthSpec), y + rowH + getPaddingTop() + getPaddingBottom());
+        }
+
+        @Override
+        protected void onLayout(boolean changed, int l, int t, int r, int b) {
+            int maxW = r - l - getPaddingLeft() - getPaddingRight();
+            int x = 0, y = 0, rowH = 0;
+            for (int i = 0; i < getChildCount(); i++) {
+                View ch = getChildAt(i);
+                int w = ch.getMeasuredWidth(), h = ch.getMeasuredHeight();
+                if (x > 0 && x + w > maxW) {
+                    x = 0;
+                    y += rowH + gap;
+                    rowH = 0;
+                }
+                ch.layout(getPaddingLeft() + x, getPaddingTop() + y, getPaddingLeft() + x + w, getPaddingTop() + y + h);
+                x += w + gap;
+                rowH = Math.max(rowH, h);
+            }
+        }
+    }
+
+    /** A ScrollView that is at most `maxHeight` tall (longer content scrolls inside). */
+    private static final class CappedScrollView extends ScrollView {
+        private final int maxHeight;
+
+        CappedScrollView(android.content.Context c, int maxHeight) {
+            super(c);
+            this.maxHeight = maxHeight;
+        }
+
+        @Override
+        protected void onMeasure(int widthSpec, int heightSpec) {
+            super.onMeasure(widthSpec, MeasureSpec.makeMeasureSpec(maxHeight, MeasureSpec.AT_MOST));
+        }
     }
 
     private void pickIcon(final Profile.Btn b) {
