@@ -79,7 +79,7 @@ public class RemoteService extends Service {
                             JSONObject o = new JSONObject().put("name", name).put("active", name.equals(active));
                             Profile p = ProfileStore.load(RemoteService.this, name);
                             if (!p.description.isEmpty()) o.put("description", p.description);
-                            o.put("buttons", p.buttons.size());
+                            o.put("buttons", p.buttons.size()).put("transport", p.transport);
                             a.put(o);
                         } catch (Exception ignored) {
                             // a broken file is not listed

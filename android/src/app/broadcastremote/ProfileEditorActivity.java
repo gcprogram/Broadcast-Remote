@@ -79,6 +79,16 @@ public class ProfileEditorActivity extends Activity {
         Profile p = parse();
         if (p == null) return;
         result.setTextColor(0xFF2E7D32);
+        if (p.isIr()) {
+            StringBuilder ir = new StringBuilder("OK, infrared profile \"" + p.name + "\", " + p.buttons.size() + " buttons.\n\nSignals:\n");
+            int n = 0;
+            for (Profile.Btn b : p.buttons) {
+                if (n++ >= 6) break;
+                ir.append(String.format(Locale.ROOT, "  %02x  %s  %s\n", b.code, b.caption(), b.ir == null ? "(macro)" : b.ir.describe()));
+            }
+            result.setText(ir.toString());
+            return;
+        }
         StringBuilder s = new StringBuilder("OK, profile \"" + p.name + "\", " + p.buttons.size() + " buttons.\n\nPackets:\n");
         s.append(p.offSilent ? "  Off    (no packet, sending is stopped)\n" : preview(p, p.offCode, "Off"));
         int shown = 0;

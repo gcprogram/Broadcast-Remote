@@ -92,7 +92,8 @@ public class MainActivity extends Activity implements Controller.Listener {
         m.getMenu().add(0, 3, 2, "Listen test");
         m.getMenu().add(0, 6, 3, "Learn (profile from another device)");
         m.getMenu().add(0, 4, 4, "Remote control");
-        m.getMenu().add(0, 5, 5, "Setup (profiles)");
+        m.getMenu().add(0, 7, 5, "Find infrared remote (catalog)");
+        m.getMenu().add(0, 5, 6, "Setup (profiles)");
         m.setOnMenuItemClickListener(item -> {
             Class<?> target;
             switch (item.getItemId()) {
@@ -101,6 +102,7 @@ public class MainActivity extends Activity implements Controller.Listener {
                 case 3: target = ProbeActivity.class; break;
                 case 4: target = RemoteActivity.class; break;
                 case 6: target = LearnActivity.class; break;
+                case 7: target = IrCatalogActivity.class; break;
                 default: target = SetupActivity.class;
             }
             startActivity(new Intent(this, target));
@@ -137,7 +139,7 @@ public class MainActivity extends Activity implements Controller.Listener {
 
     @Override
     public void onState(String text, int active) {
-        boolean bt = Controller.bluetoothOn(this);
+        boolean bt = Controller.canSend(this, ctl.profile());          // Bluetooth on, or an infrared emitter for infrared profiles
         status.setText(text);
         status.setTextColor(bt ? 0xFF000000 : 0xFFC62828);
         status.setTypeface(null, bt ? Typeface.NORMAL : Typeface.BOLD);

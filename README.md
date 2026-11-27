@@ -56,6 +56,7 @@ nothing happens, which is the point of the next sections: put your own device in
 | *Listen test* | Sends a code and scans at the same time to see whether the device sends *anything* back. For the supported device: nothing, it only receives. |
 | *Learn (profile from another device)* | Builds a profile from a second device (a phone running the original app, or a broadcasting hardware remote), see below. |
 | *Remote control* | Switches the HTTPS/MCP server on (off by default); shows address, access token and certificate. See [docs/MCP.md](docs/MCP.md). |
+| *Find infrared remote (catalog)* | Searches the [Flipper-IRDB](https://github.com/Lucaslhm/Flipper-IRDB) (about 9,000 remotes of thousands of devices, CC0) by device type and manufacturer, downloads the picked remote and saves it as an **infrared profile** that sends through the phone's IR emitter. See [Infrared](#infrared). |
 | *Setup (profiles)* | Choose the active profile; edit it as JSON (with a packet preview), copy, delete, load from or save to a file, or enter a new one. |
 
 <p>
@@ -76,6 +77,24 @@ device never says), so label the buttons yourself.
 - No Bluetooth, no sending. Remote control has to be switched on explicitly each time.
 - After `autoOffSeconds` without a new command (default 3 minutes) the app switches the device off by itself.
   When you leave the app without the remote control running, it sends *off*.
+
+## Infrared
+
+A profile can also send **infrared** instead of Bluetooth (`"transport": "ir"`, see [docs/PROFILE_FORMAT.md](docs/PROFILE_FORMAT.md)), for
+phones with an IR emitter (`ConsumerIrManager`, permission `TRANSMIT_IR`; check with *Find infrared remote*, the app says so if there is none).
+
+- *Menu → Find infrared remote (catalog)*: the list of remotes (file names only, 370 KB) is loaded once from GitHub and kept; browse by device
+  type and manufacturer or search ("samsung tv"); only the remote you pick is downloaded (a few KB), converted on the phone and saved as a profile.
+  The app needs `INTERNET` for this (it has it already for the remote control server); nothing about you is sent.
+- Protocols: NEC, NECext, Samsung32, RC5, RC5X, RC6 (mode 0), Sony SIRC (12/15/20 bit), RCA and **raw** pulse lists. Buttons of other protocols
+  (for example Panasonic Kaseikyo) are skipped and counted in the summary before you add the remote. About 96% of the buttons of TVs, lamps,
+  projectors, sound bars and air conditioners of the catalog are usable.
+- A press sends the signal **once**. Infrared has no "on until off": the main page, the MCP tool `send` and the remote control behave like a short
+  tap, `off` only stops repeating. Inside a **macro** a step "holds" the key for its time (NEC repeat frames, other protocols send the frame again).
+- Not tested on air by the author's tools: the patterns are checked on a PC against the protocol definitions (`tests/IrCheck.java`), not against a
+  receiver. If a device does not react, try another file of the same manufacturer.
+- The camera cannot learn remotes (a camera sees an IR flash at 30-240 pictures per second, but a code is 38 kHz pulses of 0.5 ms), and the IR LED of a
+  phone cannot receive. Codes come from the catalog or from a profile file.
 
 ## Learn mode: capture a device from the original app
 
@@ -110,7 +129,9 @@ python tools/profile_tool.py check profile.json capture.txt
 
 Details: [docs/CAPTURE_GUIDE.md](docs/CAPTURE_GUIDE.md). Profile format: [docs/PROFILE_FORMAT.md](docs/PROFILE_FORMAT.md).
 Tests: `python -I -m unittest discover -s tests` and `tests/PayloadCheck.java` (checks the Java engine against the
-same captured packets).
+same captured packets). Infrared (needs a real org.json, for example the Robolectric `android-all` jar, on the class path):
+`javac -cp android.jar -d out android/src/app/broadcastremote/*.java tests/IrCheck.java tests/IrProfileCheck.java`, then run `app.broadcastremote.IrCheck`
+(patterns, Flipper reader; optionally with a folder of `.ir` files as argument) and `app.broadcastremote.IrProfileCheck` (profile JSON, catalog helpers).
 
 ## Control from a PC or an AI assistant
 
@@ -127,7 +148,7 @@ and troubleshooting: [docs/MCP.md](docs/MCP.md).
 - Devices that the original app *connects* to (GATT) are out of scope, as are devices that need pairing.
 - Learn mode hears Bluetooth LE advertisements only. A hardware remote can be learned if it broadcasts (many
   simple Bluetooth LE remotes do while a button is pressed). Remotes that connect (GATT, HID keyboards), use infrared
-  or a 433 MHz / proprietary 2.4 GHz radio cannot be captured, and neither can encrypted or rolling-code ones.
+  or a 433 MHz / proprietary 2.4 GHz radio cannot be captured (infrared remotes come from the catalog, see above), and neither can encrypted or rolling-code ones.
 - Some devices use a rolling code or a per-device ID. A fixed table may then work only for one device.
 - Android limits advertising: one packet at a time here, and the interval is up to the phone.
 

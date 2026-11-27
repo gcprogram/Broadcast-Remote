@@ -85,6 +85,8 @@ public class SetupActivity extends Activity {
         row2.addView(Ui.button(this, "Save to file", v -> saveFile()));
         root.addView(row2);
         root.addView(Ui.wide(Ui.button(this, "Enter new profile", v -> create())));
+        root.addView(Ui.wide(Ui.button(this, "Find infrared remote (catalog)",
+                v -> startActivity(new Intent(this, IrCatalogActivity.class)))));
 
         info = new TextView(this);
         info.setPadding(0, 16, 0, 0);
@@ -114,7 +116,12 @@ public class SetupActivity extends Activity {
         RadioGroup group = new RadioGroup(this);
         for (String n : names) {
             RadioButton rb = new RadioButton(this);
-            rb.setText(n);
+            boolean infrared = false;
+            try {
+                infrared = ProfileStore.load(this, n).isIr();
+            } catch (IOException | IllegalArgumentException ignored) {
+            }
+            rb.setText(infrared ? n + "  (infrared)" : n);
             rb.setTextSize(18);
             rb.setChecked(n.equals(active));
             rb.setOnClickListener(v -> activate(n));

@@ -10,12 +10,15 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.hardware.ConsumerIrManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.ParcelUuid;
 import android.os.SystemClock;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
@@ -45,6 +48,8 @@ final class Controller {
     private final Handler timer = new Handler(Looper.getMainLooper());     // repeat, auto-off
     private final Handler commands = new Handler(Looper.getMainLooper());  // commands from other threads
     private final Handler macroTimer = new Handler(Looper.getMainLooper()); // next step of a running macro
+    private final ExecutorService irThread = Executors.newSingleThreadExecutor();   // ConsumerIrManager.transmit blocks until the pattern is sent
+    private boolean irToggle;                                                  // toggle bit of RC5/RC6, changes with every new press
     private BluetoothLeAdvertiser advertiser;
     private AdvertiseCallback callback;
     private Listener listener;
@@ -95,9 +100,30 @@ final class Controller {
         return adapter != null && adapter.isEnabled();
     }
 
+    /** The infrared emitter of this phone; null if there is none. */
+    private ConsumerIrManager irManager() {
+        ConsumerIrManager m = (ConsumerIrManager) ctx.getSystemService(Context.CONSUMER_IR_SERVICE);
+        return m != null && m.hasIrEmitter() ? m : null;
+    }
+
+    static boolean irAvailable(Context c) {
+        ConsumerIrManager m = (ConsumerIrManager) c.getSystemService(Context.CONSUMER_IR_SERVICE);
+        return m != null && m.hasIrEmitter();
+    }
+
+    /** Can the profile send right now: Bluetooth on for Bluetooth profiles, an infrared emitter for infrared profiles. */
+    static boolean canSend(Context c, Profile p) {
+        if (p != null && p.isIr()) return irAvailable(c);
+        return bluetoothOn(c);
+    }
+
     String describe() {
-        if (!bluetoothOn(ctx)) return BT_OFF;
         Profile p = profile();
+        if (p != null && p.isIr()) {
+            return "Profile " + p.name + " (infrared): " + (irManager() == null ? "this phone has no infrared emitter"
+                    : active == OFF ? "ready" : String.format("sending code 0x%02x", active));
+        }
+        if (!bluetoothOn(ctx)) return BT_OFF;
         if (p == null) return NO_PROFILE;
         String head = "Profile " + p.name + ": ";
         return head + (active == OFF ? "off"
@@ -106,7 +132,8 @@ final class Controller {
 
     /** With Bluetooth off: stop everything and report it; clear the message when it is switched on again. */
     void refreshBluetooth() {
-        if (!bluetoothOn(ctx)) {
+        Profile current = profile();
+        if (!bluetoothOn(ctx) && !(current != null && current.isIr())) {      // infrared does not need Bluetooth
             timer.removeCallbacksAndMessages(null);
             macroTimer.removeCallbacksAndMessages(null);
             advertiser = null;
@@ -146,6 +173,7 @@ final class Controller {
         if (p == null) return "Error: " + NO_PROFILE;
         Profile.Btn macro = fromMacro ? null : p.button(code);
         if (macro != null && macro.isMacro()) return playStep(p, macro, 0, source);
+        if (p.isIr()) return sendIr(p, code, source, fromMacro);
         BluetoothAdapter adapter = ctx.getSystemService(BluetoothManager.class).getAdapter();
         if (adapter == null || !adapter.isEnabled()) {
             refreshBluetooth();
@@ -187,6 +215,62 @@ final class Controller {
         }
         return report((off ? "OFF" : String.format("Code 0x%02x", code))
                 + "  ->  " + hexSpaced(packet) + "  [" + source + "]");
+    }
+
+    /**
+     * Infrared: one press sends the signal once. Inside a macro step the key is "held" for the step time (NEC repeat frames,
+     * other protocols send the frame again). OFF just stops repeating.
+     */
+    private String sendIr(final Profile p, int code, String source, boolean fromMacro) {
+        if (code == OFF || code == p.offCode && !p.offSilent) {
+            active = OFF;
+            autoOffAt = 0;
+            return report("OFF  ->  nothing more is sent (infrared)  [" + source + "]");
+        }
+        final ConsumerIrManager ir = irManager();
+        if (ir == null) return fail("This phone has no infrared emitter.");
+        Profile.Btn b = p.button(code);
+        if (b == null || b.ir == null) return fail(String.format("No infrared signal for code %02x.", code));
+        irToggle = !irToggle;
+        final Ir signal = b.ir;
+        final boolean toggle = irToggle;
+        transmit(ir, signal.carrierHz, signal.pattern(toggle));
+        if (fromMacro) {
+            active = code;
+            autoOffAt = 0;
+            timer.postDelayed(new IrRepeat(ir, signal, toggle), signal.repeatPeriodMs());
+        } else {
+            active = OFF;
+        }
+        return report("IR " + b.caption() + "  ->  " + signal.describe() + "  [" + source + "]");
+    }
+
+    private void transmit(final ConsumerIrManager ir, final int carrierHz, final int[] pattern) {
+        irThread.execute(() -> {
+            try {
+                ir.transmit(carrierHz, pattern);
+            } catch (RuntimeException e) {
+                timer.post(() -> report("Error: infrared sending failed: " + e.getMessage()));
+            }
+        });
+    }
+
+    private final class IrRepeat implements Runnable {
+        private final ConsumerIrManager ir;
+        private final Ir signal;
+        private final boolean toggle;
+
+        IrRepeat(ConsumerIrManager ir, Ir signal, boolean toggle) {
+            this.ir = ir;
+            this.signal = signal;
+            this.toggle = toggle;
+        }
+
+        @Override
+        public void run() {
+            transmit(ir, signal.carrierHz, signal.repeatPattern(toggle));
+            timer.postDelayed(this, signal.repeatPeriodMs());
+        }
     }
 
     /** Sends step `index` of the macro now and schedules the next one (or off after the last). */

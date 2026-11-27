@@ -79,6 +79,29 @@ you do not know (or do not need) the algorithm. A code without an entry cannot b
   an off by itself: put an off step after it if the device must be switched off before the next step. A macro needs at least
   one button step. Any other command stops a running macro. In the app: *Menu → Edit buttons → New macro button* (no JSON needed; "Add pause" adds a pause with its own time).
 
+## Infrared profiles
+
+`"transport": "ir"` (default `"ble"`) sends through the phone's infrared emitter. Such a profile has **no** `advertising` and `payload`; every
+button (except macros) carries its own signal in `ir`, and `off` is always silent (infrared sends one signal per press, off only stops repeating):
+
+```json
+{ "format": 1, "name": "Samsung (IR)", "transport": "ir",
+  "buttons": [
+    { "code": "00", "label": "Power",  "ir": { "protocol": "Samsung32", "address": "07", "command": "02" } },
+    { "code": "01", "label": "Vol_up", "ir": { "protocol": "NECext", "address": "fb04", "command": "e51a" } },
+    { "code": "02", "label": "Blue",   "ir": { "protocol": "raw", "carrier": 38000, "data": [9000, 4500, 560, 560, 560, 1690, 560] } } ] }
+```
+
+- `protocol`: `NEC` (8-bit address and command), `NECext` (16/16), `Samsung32` (8-bit address, 8- or 16-bit command), `RC5` (5/6 bit), `RC5X` (5/7),
+  `RC6` (mode 0, 8/8), `SIRC` (5/7), `SIRC15` (8/7), `SIRC20` (13/7), `RCA` (4/8) or `raw`. Address and command are hex strings like in the
+  Flipper-IRDB (little endian, the app converts).
+- `raw`: `carrier` in Hz (10000-100000) and `data` = durations in microseconds, alternating mark/space, starting with a mark (together under
+  2 seconds, each at most 200 ms).
+- `code` is only the name of the button (0-255), the profile may have at most 200 buttons so that macros keep free codes.
+- A press sends the signal once. A **macro** step sends it, then repeats it for the hold time (NEC: the short repeat frame, SIRC: the frame, others: the
+  same frame again; RC5/RC6 toggle bit changes with every new press).
+- *Menu → Find infrared remote (catalog)* builds such profiles from the [Flipper-IRDB](https://github.com/Lucaslhm/Flipper-IRDB) (CC0).
+
 ## Learning a profile from captures
 
 `tools/profile_tool.py learn` reads lines `code packet` and tries, in this order: prefix + xor (no CRC), prefix + xor +

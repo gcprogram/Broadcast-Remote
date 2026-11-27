@@ -58,6 +58,8 @@ final class Profile {
         int code;
         String label;       // empty = show the hex code
         String icon;
+        /** Infrared profile: the signal of this button (null for macros and Bluetooth profiles). */
+        Ir ir;
         String example;     // optional: what the button is good for (for people and assistants), shown by the MCP tool "buttons"
         /** Not empty = macro: the code is only a name for it, nothing is sent for the code itself; the steps are played one after another. */
         List<Step> macro = new ArrayList<>();
@@ -89,8 +91,13 @@ final class Profile {
     private static final String[] MODES = {"low_power", "balanced", "low_latency"};
     private static final String[] POWERS = {"ultra_low", "low", "medium", "high"};
 
+    static final String BLE = "ble";
+    static final String IR = "ir";
+
     String name = "";
     String description = "";
+    /** BLE = sent as Bluetooth LE advertising (payload), IR = sent through the infrared emitter (each button has an Ir signal). */
+    String transport = BLE;
     int companyId = 255;
     List<String> serviceUuids = new ArrayList<>();
     boolean connectable = true;
@@ -105,6 +112,10 @@ final class Profile {
     int offSendMs = 2000;
     int autoOffSeconds = 180;
     List<Btn> buttons = new ArrayList<>();
+
+    boolean isIr() {
+        return IR.equals(transport);
+    }
 
     int advertiseMode() {
         return indexOf(MODES, mode);
@@ -159,28 +170,31 @@ final class Profile {
         p.name = o.optString("name", "").trim();
         if (p.name.isEmpty()) throw new IllegalArgumentException("\"name\" is missing");
         p.description = o.optString("description", "");
+        p.transport = oneOf(o.optString("transport", BLE), new String[]{BLE, IR}, "transport");
 
-        JSONObject adv = o.optJSONObject("advertising");
-        if (adv == null) throw new IllegalArgumentException("\"advertising\" is missing");
-        p.companyId = adv.optInt("companyId", -1);
-        if (p.companyId < 0 || p.companyId > 0xffff) throw new IllegalArgumentException("advertising.companyId must be 0-65535");
-        JSONArray uu = adv.optJSONArray("serviceUuids");
-        if (uu != null) {
-            for (int i = 0; i < uu.length(); i++) {
-                String u = uu.getString(i).trim();
-                fullUuid(u);                                    // checks the format
-                p.serviceUuids.add(u);
+        if (!p.isIr()) {
+            JSONObject adv = o.optJSONObject("advertising");
+            if (adv == null) throw new IllegalArgumentException("\"advertising\" is missing");
+            p.companyId = adv.optInt("companyId", -1);
+            if (p.companyId < 0 || p.companyId > 0xffff) throw new IllegalArgumentException("advertising.companyId must be 0-65535");
+            JSONArray uu = adv.optJSONArray("serviceUuids");
+            if (uu != null) {
+                for (int i = 0; i < uu.length(); i++) {
+                    String u = uu.getString(i).trim();
+                    fullUuid(u);                                    // checks the format
+                    p.serviceUuids.add(u);
+                }
             }
-        }
-        p.connectable = adv.optBoolean("connectable", true);
-        p.mode = oneOf(adv.optString("mode", "low_latency"), MODES, "advertising.mode");
-        p.txPower = oneOf(adv.optString("txPower", "high"), POWERS, "advertising.txPower");
-        p.timeoutMs = range(adv.optInt("timeoutMs", 3000), 0, 180000, "advertising.timeoutMs");
-        p.repeatMs = range(adv.optInt("repeatMs", 1000), 100, 60000, "advertising.repeatMs");
+            p.connectable = adv.optBoolean("connectable", true);
+            p.mode = oneOf(adv.optString("mode", "low_latency"), MODES, "advertising.mode");
+            p.txPower = oneOf(adv.optString("txPower", "high"), POWERS, "advertising.txPower");
+            p.timeoutMs = range(adv.optInt("timeoutMs", 3000), 0, 180000, "advertising.timeoutMs");
+            p.repeatMs = range(adv.optInt("repeatMs", 1000), 100, 60000, "advertising.repeatMs");
 
-        JSONObject pl = o.optJSONObject("payload");
-        if (pl == null) throw new IllegalArgumentException("\"payload\" is missing");
-        p.payload = parsePayload(pl);
+            JSONObject pl = o.optJSONObject("payload");
+            if (pl == null) throw new IllegalArgumentException("\"payload\" is missing");
+            p.payload = parsePayload(pl);
+        }
 
         JSONObject off = o.optJSONObject("off");
         if (off != null) {
@@ -188,6 +202,7 @@ final class Profile {
             if (!p.offSilent || off.has("code")) p.offCode = code(off.opt("code"), "off.code");
             p.offSendMs = range(off.optInt("sendMs", 2000), 200, 30000, "off.sendMs");
         }
+        if (p.isIr()) p.offSilent = true;                       // infrared has no off signal: off just stops repeating
         p.autoOffSeconds = range(o.optInt("autoOffSeconds", 180), 5, 3600, "autoOffSeconds");
 
         JSONArray bs = o.optJSONArray("buttons");
@@ -198,6 +213,8 @@ final class Profile {
                 if (p.hasButton(c)) throw new IllegalArgumentException("Duplicate button: " + String.format("%02x", c));
                 Btn btn = new Btn(c, b.optString("label", ""), b.optString("icon", ""));
                 btn.example = b.optString("example", "").trim();
+                JSONObject irJson = b.optJSONObject("ir");
+                if (irJson != null) btn.ir = parseIr(irJson, "buttons[" + i + "].ir");
                 JSONArray steps = b.optJSONArray("macro");
                 if (steps != null) {
                     if (steps.length() > Btn.MAX_STEPS) throw new IllegalArgumentException("buttons[" + i + "].macro: at most " + Btn.MAX_STEPS + " steps");
@@ -222,6 +239,7 @@ final class Profile {
                 p.buttons.add(btn);
             }
             for (Btn b : p.buttons) {                           // a macro plays plain buttons only, no macros inside macros
+                if (p.isIr() && !b.isMacro() && b.ir == null) throw new IllegalArgumentException("Button " + b.caption() + " has no \"ir\" signal");
                 if (b.isMacro() && b.pressSteps() == 0) throw new IllegalArgumentException("Macro " + b.caption() + " has only pauses");
                 for (Step s : b.macro) {
                     if (!s.isPress()) continue;
@@ -232,17 +250,19 @@ final class Profile {
             }
         }
 
-        // Legacy advertising has 31 bytes: flags 3 + manufacturer data (4 + n) + UUID list (2 + 2 per 16-bit UUID)
-        int size = (p.connectable ? 3 : 0) + 4 + maxPacketLength(p.payload);
-        int uuid16 = 0;
-        int uuid128 = 0;
-        for (String u : p.serviceUuids) {
-            if (u.length() <= 4) uuid16++;
-            else uuid128++;
+        if (!p.isIr()) {
+            // Legacy advertising has 31 bytes: flags 3 + manufacturer data (4 + n) + UUID list (2 + 2 per 16-bit UUID)
+            int size = (p.connectable ? 3 : 0) + 4 + maxPacketLength(p.payload);
+            int uuid16 = 0;
+            int uuid128 = 0;
+            for (String u : p.serviceUuids) {
+                if (u.length() <= 4) uuid16++;
+                else uuid128++;
+            }
+            if (uuid16 > 0) size += 2 + 2 * uuid16;
+            if (uuid128 > 0) size += 2 + 16 * uuid128;
+            if (size > 31) throw new IllegalArgumentException("Packet too long for legacy advertising (" + size + " of 31 bytes)");
         }
-        if (uuid16 > 0) size += 2 + 2 * uuid16;
-        if (uuid128 > 0) size += 2 + 16 * uuid128;
-        if (size > 31) throw new IllegalArgumentException("Packet too long for legacy advertising (" + size + " of 31 bytes)");
         return p;
     }
 
@@ -289,39 +309,42 @@ final class Profile {
             o.put("format", FORMAT);
             o.put("name", name);
             if (!description.isEmpty()) o.put("description", description);
-            JSONObject adv = new JSONObject();
-            adv.put("companyId", companyId);
-            adv.put("serviceUuids", new JSONArray(serviceUuids));
-            adv.put("connectable", connectable);
-            adv.put("mode", mode);
-            adv.put("txPower", txPower);
-            adv.put("timeoutMs", timeoutMs);
-            adv.put("repeatMs", repeatMs);
-            o.put("advertising", adv);
+            if (isIr()) o.put("transport", IR);
+            if (!isIr()) {
+                JSONObject adv = new JSONObject();
+                adv.put("companyId", companyId);
+                adv.put("serviceUuids", new JSONArray(serviceUuids));
+                adv.put("connectable", connectable);
+                adv.put("mode", mode);
+                adv.put("txPower", txPower);
+                adv.put("timeoutMs", timeoutMs);
+                adv.put("repeatMs", repeatMs);
+                o.put("advertising", adv);
 
-            JSONObject pl = new JSONObject();
-            if (payload.isTable()) {
-                pl.put("type", "table");
-                JSONObject packets = new JSONObject();
-                for (Map.Entry<Integer, byte[]> e : payload.table.entrySet()) {
-                    packets.put(String.format(Locale.ROOT, "%02x", e.getKey()), Payload.hex(e.getValue()));
+                JSONObject pl = new JSONObject();
+                if (payload.isTable()) {
+                    pl.put("type", "table");
+                    JSONObject packets = new JSONObject();
+                    for (Map.Entry<Integer, byte[]> e : payload.table.entrySet()) {
+                        packets.put(String.format(Locale.ROOT, "%02x", e.getKey()), Payload.hex(e.getValue()));
+                    }
+                    pl.put("packets", packets);
+                } else {
+                    pl.put("type", "template");
+                    pl.put("prefix", Payload.hex(payload.prefix));
+                    pl.put("xor", String.format(Locale.ROOT, "%02x", payload.xor));
+                    if (payload.crc != null) {
+                        JSONObject c = new JSONObject();
+                        c.put("poly", String.format(Locale.ROOT, "%04x", payload.crc.poly));
+                        c.put("init", String.format(Locale.ROOT, "%04x", payload.crc.init));
+                        c.put("reflected", payload.crc.reflected);
+                        c.put("swap", payload.crc.swap);
+                        c.put("xorOut", String.format(Locale.ROOT, "%04x", payload.crc.xorOut));
+                        pl.put("crc", c);
+                    }
                 }
-                pl.put("packets", packets);
-            } else {
-                pl.put("type", "template");
-                pl.put("prefix", Payload.hex(payload.prefix));
-                pl.put("xor", String.format(Locale.ROOT, "%02x", payload.xor));
-                if (payload.crc != null) {
-                    JSONObject c = new JSONObject();
-                    c.put("poly", String.format(Locale.ROOT, "%04x", payload.crc.poly));
-                    c.put("init", String.format(Locale.ROOT, "%04x", payload.crc.init));
-                    c.put("reflected", payload.crc.reflected);
-                    c.put("swap", payload.crc.swap);
-                    c.put("xorOut", String.format(Locale.ROOT, "%04x", payload.crc.xorOut));
-                    pl.put("crc", c);
-                }
+                o.put("payload", pl);
             }
-            o.put("payload", pl);
             JSONObject offJson = new JSONObject();
             if (offSilent) offJson.put("silent", true);
             else offJson.put("code", String.format(Locale.ROOT, "%02x", offCode)).put("sendMs", offSendMs);
@@ -333,6 +356,7 @@ final class Profile {
                 if (!b.label.isEmpty()) j.put("label", b.label);
                 if (!b.icon.isEmpty()) j.put("icon", b.icon);
                 if (!b.example.isEmpty()) j.put("example", b.example);
+                if (b.ir != null) j.put("ir", irJson(b.ir));
                 if (b.isMacro()) {
                     JSONArray steps = new JSONArray();
                     for (Step s : b.macro) {
@@ -349,6 +373,40 @@ final class Profile {
         } catch (JSONException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    // ---------------------------------------------------------------- infrared signals
+
+    private static Ir parseIr(JSONObject j, String where) {
+        String protocol = j.optString("protocol", "").trim();
+        if (protocol.isEmpty()) throw new IllegalArgumentException(where + ".protocol is missing");
+        try {
+            if (protocol.equalsIgnoreCase(Ir.RAW)) {
+                JSONArray d = j.optJSONArray("data");
+                if (d == null) throw new IllegalArgumentException("\"data\" is missing");
+                int[] data = new int[d.length()];
+                for (int i = 0; i < data.length; i++) data[i] = d.optInt(i, -1);
+                return Ir.raw(j.optInt("carrier", 38000), data);
+            }
+            return Ir.of(protocol, number(j.opt("address"), "address"), number(j.opt("command"), "command"));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(where + ": " + e.getMessage());
+        }
+    }
+
+    private static JSONObject irJson(Ir ir) throws JSONException {
+        JSONObject j = new JSONObject();
+        if (ir.isRaw()) {
+            j.put("protocol", Ir.RAW).put("carrier", ir.carrierHz);
+            JSONArray d = new JSONArray();
+            for (int v : ir.data) d.put(v);
+            j.put("data", d);
+        } else {
+            j.put("protocol", ir.protocol)
+                    .put("address", String.format(Locale.ROOT, "%02x", ir.address))
+                    .put("command", String.format(Locale.ROOT, "%02x", ir.command));
+        }
+        return j;
     }
 
     // ---------------------------------------------------------------- helpers
